@@ -59,8 +59,13 @@ def run_football():
             continue
         hs   = fetch_football_team_stats(fix["home_id"], fix["league_id"])
         aws  = fetch_football_team_stats(fix["away_id"], fix["league_id"])
-        h2h  = fetch_h2h(fix["home_id"], fix["away_id"])
-        odds = fetch_football_odds(fix["fixture_id"])
+        source = fix.get("source", "api-football")
+        if source == "football-data":
+            h2h = []
+            odds = None
+        else:
+            h2h  = fetch_h2h(fix["home_id"], fix["away_id"])
+            odds = fetch_football_odds(fix["fixture_id"])
         # Get news sentiment for dynamic adjustment
         sentiment_home = get_team_sentiment(fix["home_team"], "football")["score"]
         sentiment_away = get_team_sentiment(fix["away_team"], "football")["score"]

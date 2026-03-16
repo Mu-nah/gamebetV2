@@ -70,7 +70,12 @@ class FootballPredictor:
         else:
             winner, winner_label, confidence = "draw", "Draw", prob_draw
 
-        confidence = min(confidence, 90)
+        data_note = ""
+        if not home_stats.get("form") or not away_stats.get("form"):
+            data_note = "Limited stats (missing recent form) — treat as low confidence"
+            confidence = min(confidence, 65)
+        else:
+            confidence = min(confidence, 90)
 
         # ── Confidence grade ──────────────────────────────────────────────────
         if confidence >= 70:
@@ -143,6 +148,7 @@ class FootballPredictor:
             "score_prob":     score_prob,
             "home_form":      self._form_string(home_stats),
             "away_form":      self._form_string(away_stats),
+            "data_note":      data_note,
             "key_factor":     self._key_factor(home_score, away_score, h2h_adj, xg_home, xg_away, fixture),
             "value_bets":     value_bets,
             "home_played":    home_played,
@@ -212,6 +218,20 @@ class FootballPredictor:
         avg_conceded  = self._safe_avg(stats, "goals", "against", "average", venue, default=1.2)
         score        += min(avg_scored / 3.0, 1.0) * self.W_ATTACK
         score        += (1.0 - min(avg_conceded / 3.0, 1.0)) * self.W_DEFENSE
+
+        # Extra signal for football-data.org fallback stats.
+        try:
+            ppg = float(stats.get("fd_ppg", 0) or 0)
+            # ppg ranges 0..3; normalize to 0..1.
+            score += min(max(ppg, 0.0), 3.0) / 3.0 * self.W_POS
+
+            gdpg = float(stats.get("fd_gd_per_game", 0) or 0)
+            # Goal difference per game ~ [-2..2]. Small signed adjustment.
+            gdpg = max(min(gdpg, 1.5), -1.5)
+            score += (gdpg / 1.5) * 0.05
+        except Exception:
+            pass
+
         return max(score, 0.1)
 
     def _h2h_score(self, h2h, home_team_id):

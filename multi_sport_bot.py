@@ -6,7 +6,7 @@ Sports: Football | NBA Basketball | Tennis
 import os
 import sys
 import requests
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta, time as dt_time
 
 try:
     from dotenv import load_dotenv
@@ -129,9 +129,18 @@ def validate_config():
 # FOOTBALL FETCHERS
 # ═══════════════════════════════════════════════════════════════════════════════
 def fetch_football_fixtures():
-    # api-football uses UTC dates for the "date" parameter.
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    # We report fixtures in WAT, but api-football's `date=YYYY-MM-DD` is UTC-based.
+    # Around midnight WAT, using only "today UTC" can pull the wrong matchday.
+    wat_today = datetime.now(WAT_OFFSET).date()
+    start_utc = datetime.combine(wat_today, dt_time.min, tzinfo=WAT_OFFSET).astimezone(timezone.utc).date()
+    end_utc = datetime.combine(wat_today, dt_time.max, tzinfo=WAT_OFFSET).astimezone(timezone.utc).date()
+    utc_dates = sorted({start_utc.strftime("%Y-%m-%d"), end_utc.strftime("%Y-%m-%d")})
+    date_from = utc_dates[0]
+    date_to = utc_dates[-1]
+
     fixtures = []
+    seen_ids = set()
+    today = wat_today.strftime("%Y-%m-%d")
 
     for league_id, (name, offset) in FOOTBALL_LEAGUES.items():
         season  = datetime.now().year + offset
@@ -155,18 +164,32 @@ def fetch_football_fixtures():
             results = body.get("response", [])
             if results:
                 for f in results:
+                    fid = f["fixture"]["id"]
+                    if fid in seen_ids:
+                        continue
+
+                    kickoff = f["fixture"]["date"]
+                    try:
+                        dt = datetime.fromisoformat(str(kickoff).replace("Z", "+00:00")).astimezone(WAT_OFFSET)
+                        if dt.date() != wat_today:
+                            continue
+                    except Exception:
+                        pass
+
                     fixtures.append({
                         "sport":      "football",
-                        "fixture_id": f["fixture"]["id"],
+                        "source":     "api-football",
+                        "fixture_id": fid,
                         "league":     name,
                         "league_id":  league_id,
                         "home_team":  f["teams"]["home"]["name"],
                         "away_team":  f["teams"]["away"]["name"],
                         "home_id":    f["teams"]["home"]["id"],
                         "away_id":    f["teams"]["away"]["id"],
-                        "kickoff":    f["fixture"]["date"],
+                        "kickoff":    kickoff,
                         "venue":      (f["fixture"].get("venue") or {}).get("name", "TBC"),
                     })
+                    seen_ids.add(fid)
                 found = True
                 break  # Got results — no need to try previous season
 
@@ -181,7 +204,7 @@ def fetch_football_fixtures():
                 continue  # Skip leagues not available in football-data.org
             code = FOOTBALL_DATA_LEAGUES[league_id]
             resp = football_data_client.get(f"{FOOTBALL_DATA_URL}/competitions/{code}/matches", params={
-                "dateFrom": today, "dateTo": today
+                "dateFrom": date_from, "dateTo": date_to
             })
             if not resp or resp.status_code != 200:
                 continue
@@ -189,8 +212,17 @@ def fetch_football_fixtures():
             matches = body.get("matches", [])
             if matches:
                 for m in matches:
+                    kickoff = m["utcDate"]
+                    try:
+                        dt = datetime.fromisoformat(str(kickoff).replace("Z", "+00:00")).astimezone(WAT_OFFSET)
+                        if dt.date() != wat_today:
+                            continue
+                    except Exception:
+                        pass
+
                     fixtures.append({
                         "sport":      "football",
+                        "source":     "football-data",
                         "fixture_id": f"fd_{m['id']}",  # prefix to distinguish
                         "league":     name,
                         "league_id":  league_id,
@@ -198,7 +230,7 @@ def fetch_football_fixtures():
                         "away_team":  m["awayTeam"]["name"],
                         "home_id":    m["homeTeam"]["id"],
                         "away_id":    m["awayTeam"]["id"],
-                        "kickoff":    m["utcDate"],
+                        "kickoff":    kickoff,
                         "venue":      "TBC",  # football-data.org doesn't provide venue in matches
                     })
                 print(f"[INFO] Football-data.org {name}: {len(matches)} fixtures.")
@@ -302,6 +334,16 @@ def fetch_football_team_stats_fd(team_id, code):
                 else:
                     form_str += "D"
             picked += 1
+
+    # Some football-data standings include a `form` string (often comma-separated).
+    if not form_str:
+        try:
+            raw_form = team_data.get("form")
+            if raw_form:
+                raw_form = str(raw_form).replace(",", "").replace(" ", "").upper()
+                form_str = raw_form[-5:]
+        except Exception:
+            pass
     
     # Construct stats dict similar to api-football
     goals_for = team_data["goalsFor"]
@@ -335,6 +377,10 @@ def fetch_football_team_stats_fd(team_id, code):
             }
         },
         "form": form_str,
+        "fd_position": team_data.get("position"),
+        "fd_points": team_data.get("points"),
+        "fd_ppg": (team_data.get("points", 0) / played) if played else 0,
+        "fd_gd_per_game": ((goals_for - goals_against) / played) if played else 0,
         # Add other fields if needed, but this should suffice for the predictor
     }
     return stats
@@ -1066,10 +1112,12 @@ def format_football_card(fix, pred):
             lines.append(f"   💎 *{vb['outcome']}* @ `{vb['odd']}` | Edge: `+{vb['value']}%`")
         vb_block = "\n".join(lines)
 
+    note_line = f"\n⚠️ _{pred['data_note']}_" if pred.get("data_note") else ""
+
     return f"""
 ⚽ *FOOTBALL — {fix['league']}*
 🆚 *{fix['home_team']}* vs *{fix['away_team']}*
-⏰ `{ko_str(fix['kickoff'])}` 📍 _{fix.get('venue', 'TBC')}_
+⏰ `{ko_str(fix['kickoff'])}` 📍 _{fix.get('venue', 'TBC')}_{note_line}_
 
 🎯 {pred['grade']} | {w_e} *{pred['winner_label']}* `{pred['confidence']}%`
 `[{conf_bar}]`
@@ -1313,8 +1361,12 @@ def run_predictions():
     for fix in football_fixtures:
         hs   = fetch_football_team_stats(fix["home_id"], fix["league_id"])
         aws  = fetch_football_team_stats(fix["away_id"], fix["league_id"])
-        h2h  = fetch_h2h(fix["home_id"], fix["away_id"])
-        odds = fetch_football_odds(fix["fixture_id"])
+        if fix.get("source") == "football-data":
+            h2h = []
+            odds = None
+        else:
+            h2h  = fetch_h2h(fix["home_id"], fix["away_id"])
+            odds = fetch_football_odds(fix["fixture_id"])
         pred = f_pred.predict(fix, hs, aws, h2h, odds=odds)
         if pred.get("skip"):
             football_skipped.append(f"⏭ {fix['home_team']} v {fix['away_team']} — {pred['reason']}")
