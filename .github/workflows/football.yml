@@ -1,0 +1,27 @@
+name: Football Predictions
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 */2 * * *"
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Run football now
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          FOOTBALL_API_KEYS: ${{ secrets.FOOTBALL_API_KEYS }}
+          FOOTBALL_DATA_KEYS: ${{ secrets.FOOTBALL_DATA_KEYS }}
+          REQUESTS_TRUST_ENV: "0"
+        run: python scheduler.py --sport football --now
+

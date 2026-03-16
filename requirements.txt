@@ -1,0 +1,10 @@
+requests==2.31.0
+apscheduler==3.10.4
+python-dotenv
+requests==2.31.0
+numpy 
+pandas 
+scikit-learn
+feedparser==6.0.11
+transformers>=4.30.0
+torch>=2.0.0
