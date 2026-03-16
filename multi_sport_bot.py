@@ -1320,7 +1320,9 @@ def format_football_card(fix, pred):
 # ── Basketball card ────────────────────────────────────────────────────────────
 def format_basketball_card(fix, pred):
     w_e      = "🏠" if pred["winner"] == "home" else "✈️"
-    conf_bar = "█" * (pred["confidence"] // 10) + "░" * (10 - pred["confidence"] // 10)
+    conf = int(round(float(pred.get("confidence", 0) or 0)))
+    conf = max(0, min(conf, 100))
+    conf_bar = "█" * (conf // 10) + "░" * (10 - conf // 10)
     ou_e     = "⬆️" if "Over" in pred["over_under"] else "⬇️"
 
     return f"""
@@ -1328,7 +1330,7 @@ def format_basketball_card(fix, pred):
 🆚 *{fix['home_team']}* vs *{fix['away_team']}*
 ⏰ `{ko_str(fix['kickoff'])}` 📍 _{fix.get('venue', 'TBC')}_
 
-🎯 {pred['grade']} | {w_e} *{pred['winner_label']}* `{pred['confidence']}%`
+🎯 {pred['grade']} | {w_e} *{pred['winner_label']}* `{conf}%`
 `[{conf_bar}]`
 🏠`{pred['prob_home']}%`  ✈️`{pred['prob_away']}%`
 
@@ -1347,7 +1349,9 @@ def format_basketball_card(fix, pred):
 
 # ── Tennis card ────────────────────────────────────────────────────────────────
 def format_tennis_card(fix, pred):
-    conf_bar   = "█" * (pred["confidence"] // 10) + "░" * (10 - pred["confidence"] // 10)
+    conf = int(round(float(pred.get("confidence", 0) or 0)))
+    conf = max(0, min(conf, 100))
+    conf_bar   = "█" * (conf // 10) + "░" * (10 - conf // 10)
     ou_e       = "⬆️" if "Over" in pred["over_under"] else "⬇️"
     rank_home  = pred.get("rank_home", 999)
     rank_away  = pred.get("rank_away", 999)
@@ -1362,7 +1366,7 @@ def format_tennis_card(fix, pred):
 🆚 *{fix['home_team']}* vs *{fix['away_team']}*
 ⏰ `{ko_str(fix['kickoff'])}` 🏟️ _{pred['surface']} Court_{rank_line}
 
-🎯 {pred['grade']} | 🎾 *{pred['winner_label']}* `{pred['confidence']}%`
+🎯 {pred['grade']} | 🎾 *{pred['winner_label']}* `{conf}%`
 `[{conf_bar}]`
 🏠`{pred['prob_home']}%`  ✈️`{pred['prob_away']}%`
 

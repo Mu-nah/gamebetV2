@@ -37,6 +37,13 @@ class FootballPredictor:
 
     def predict(self, fixture, home_stats, away_stats, h2h, odds=None, sentiment_home=0.0, sentiment_away=0.0):
         # ── Filter: skip if too few games played ──────────────────────────────
+        if fixture.get("source") == "espn":
+            league_name = fixture.get("league", "default")
+            if not home_stats:
+                home_stats = self._default_stats(league_name)
+            if not away_stats:
+                away_stats = self._default_stats(league_name)
+
         home_played = self._games_played(home_stats)
         away_played = self._games_played(away_stats)
         if home_played < MIN_MATCHES_PLAYED or away_played < MIN_MATCHES_PLAYED:
@@ -156,6 +163,18 @@ class FootballPredictor:
         }
 
     # ─── xG MODEL ─────────────────────────────────────────────────────────────
+    def _default_stats(self, league_name):
+        lg = LEAGUE_AVG_GOALS.get(league_name, LEAGUE_AVG_GOALS["default"])
+        half = lg / 2
+        return {
+            "fixtures": {"played": {"total": MIN_MATCHES_PLAYED}},
+            "goals": {
+                "for": {"average": {"home": half, "away": half, "total": lg}},
+                "against": {"average": {"home": half, "away": half, "total": lg}},
+            },
+            "form": "",
+        }
+
     def _expected_goals(self, home_stats, away_stats, league_name):
         lg = LEAGUE_AVG_GOALS.get(league_name, LEAGUE_AVG_GOALS["default"])
         half = lg / 2
