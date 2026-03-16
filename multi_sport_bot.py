@@ -164,6 +164,7 @@ ESPN_SOCCER_URL = "https://site.api.espn.com/apis/site/v2/sports/soccer"
 # Cache ESPN soccer *team* stats, pulled from the per-team endpoint.
 # ESPN's `/standings` endpoint sometimes returns `{}` in some networks, so we avoid relying on it.
 _espn_soccer_team_cache = {}  # {league_key: {team_id: stats_dict}}
+_espn_soccer_form_cache = {}  # {league_key: {team_id: "WDLWW"}}
 
 
 def _tcp_connectable(host: str, port: int, timeout: float = 1.5) -> bool:
@@ -172,6 +173,71 @@ def _tcp_connectable(host: str, port: int, timeout: float = 1.5) -> bool:
             return True
     except OSError:
         return False
+
+
+def _espn_soccer_recent_form(league_key: str, team_id: str, n: int = 5) -> str:
+    """
+    ESPN soccer fallback: compute recent form (last N completed matches) from the team schedule endpoint.
+    Returns a string like "WDLWW" or "" if unavailable.
+    """
+    if not league_key or not team_id:
+        return ""
+    league_key = str(league_key)
+    team_id = str(team_id)
+    league_cache = _espn_soccer_form_cache.setdefault(league_key, {})
+    if team_id in league_cache:
+        return league_cache.get(team_id, "") or ""
+
+    def _score_val(x):
+        if isinstance(x, dict):
+            try:
+                return float(x.get("value") or 0.0)
+            except Exception:
+                return 0.0
+        try:
+            return float(x or 0.0)
+        except Exception:
+            return 0.0
+
+    url = f"{ESPN_SOCCER_URL}/{league_key}/teams/{team_id}/schedule"
+    try:
+        resp = _http.get(url, headers=ESPN_HEADERS, timeout=15)
+        if resp.status_code != 200:
+            return ""
+        data = resp.json() or {}
+    except Exception:
+        return ""
+
+    completed = []
+    for ev in (data.get("events") or []):
+        comp = (ev.get("competitions") or [{}])[0] or {}
+        st = (comp.get("status") or {})
+        state = ((st.get("type") or {}).get("state")) or ""
+        if state != "post":
+            continue
+        competitors = comp.get("competitors") or []
+        me = opp = None
+        for c in competitors:
+            if (c.get("team") or {}).get("id") == team_id:
+                me = c
+            else:
+                opp = c
+        if not me or not opp:
+            continue
+        my = _score_val(me.get("score"))
+        op = _score_val(opp.get("score"))
+        if my > op:
+            res = "W"
+        elif my < op:
+            res = "L"
+        else:
+            res = "D"
+        completed.append((ev.get("date") or "", res))
+
+    completed.sort(key=lambda x: x[0])
+    form = "".join(r for _, r in completed[-n:])
+    league_cache[team_id] = form
+    return form
 
 
 def _espn_soccer_team_stats_from_record(record: dict) -> dict:
@@ -265,6 +331,11 @@ def fetch_football_team_stats_espn(team_id, league_key: str):
         team = (data.get("team") or {})
         record = (team.get("record") or {})
         stats = _espn_soccer_team_stats_from_record(record)
+        # Add recent form when available so the football predictor can use it.
+        if stats is not None:
+            form = _espn_soccer_recent_form(league_key, tid, n=5)
+            if form:
+                stats["form"] = form
         if stats:
             league_cache[tid] = stats
         return stats or {}
@@ -785,8 +856,10 @@ def _load_nba_stats_from_espn():
                     "ppg":          round(ppg, 1),
                     "opp_ppg":      round(opp_ppg, 1),
                     "net_rating":   round(diff, 1),
-                    "off_rating":   round(ppg * 0.9 + 10, 1),
-                    "def_rating":   round(opp_ppg * 0.9 + 10, 1),
+                    # User preference: treat offense/defense as simple points for/against per game.
+                    # BasketballPredictor uses these as the primary inputs.
+                    "off_rating":   round(ppg, 1),
+                    "def_rating":   round(opp_ppg, 1),
                     "pace":         98.5,
                     "recent_trend": round((w_pct - 0.5) * 4, 2),
                     "wins":         int(w),

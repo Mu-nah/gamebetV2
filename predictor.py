@@ -63,12 +63,26 @@ class FootballPredictor:
         home_score += h2h_adj * self.W_H2H
         away_score -= h2h_adj * self.W_H2H
 
-        # ── 1X2 probabilities ─────────────────────────────────────────────────
-        total     = home_score + away_score + 1.0
-        prob_home = round((home_score / total) * 100)
-        prob_away = round((away_score / total) * 100)
-        prob_draw = max(5, 100 - prob_home - prob_away)
-        prob_draw += 100 - (prob_home + prob_away + prob_draw)   # rebalance
+        # ── xG model ──────────────────────────────────────────────────────────
+        league_name = fixture.get("league", "default")
+        xg_home, xg_away = self._expected_goals(home_stats, away_stats, league_name)
+
+        # ── 1X2 probabilities (Poisson from xG) ───────────────────────────────
+        # This prevents a systematic draw bias from the old strength-only formula.
+        p_home, p_draw, p_away = self._match_outcome_probs_poisson(xg_home, xg_away, max_g=7)
+        prob_home = int(round(p_home * 100))
+        prob_draw = int(round(p_draw * 100))
+        prob_away = 100 - prob_home - prob_draw
+        if prob_away < 0:
+            # Rebalance in the rare case rounding pushes us below zero.
+            prob_away = 0
+            s = prob_home + prob_draw + prob_away
+            if s > 100:
+                # Reduce the largest bucket.
+                if prob_home >= prob_draw:
+                    prob_home -= (s - 100)
+                else:
+                    prob_draw -= (s - 100)
 
         if prob_home > prob_away and prob_home > prob_draw:
             winner, winner_label, confidence = "home", f"{fixture['home_team']} Win", prob_home
@@ -91,10 +105,6 @@ class FootballPredictor:
             grade = "MEDIUM ⚡"
         else:
             grade = "LOW 🌡️"
-
-        # ── xG model ──────────────────────────────────────────────────────────
-        league_name = fixture.get("league", "default")
-        xg_home, xg_away = self._expected_goals(home_stats, away_stats, league_name)
 
         # ── Over/Under via Poisson ────────────────────────────────────────────
         over_prob      = self._over_probability(xg_home, xg_away, line=2.5)
@@ -212,6 +222,26 @@ class FootballPredictor:
         p_home = 1 - self._poisson_prob(xg_home, 0)
         p_away = 1 - self._poisson_prob(xg_away, 0)
         return round(p_home * p_away * 100)
+
+    def _match_outcome_probs_poisson(self, xg_home, xg_away, max_g=7):
+        """
+        Returns (p_home_win, p_draw, p_away_win) from independent Poisson goals.
+        """
+        p_home = p_draw = p_away = 0.0
+        for h in range(max_g + 1):
+            ph = self._poisson_prob(xg_home, h)
+            for a in range(max_g + 1):
+                p = ph * self._poisson_prob(xg_away, a)
+                if h > a:
+                    p_home += p
+                elif h == a:
+                    p_draw += p
+                else:
+                    p_away += p
+        s = p_home + p_draw + p_away
+        if s <= 0:
+            return 0.33, 0.34, 0.33
+        return p_home / s, p_draw / s, p_away / s
 
     def _best_correct_score(self, xg_home, xg_away, max_g=5):
         best_p, best_s = 0.0, "1 - 1"
