@@ -128,8 +128,8 @@ def run_football(dedupe: bool = True):
         else:
             results.append((fix, pred))
 
-    # Filter out LOW confidence predictions
-    results = [(f, p) for f, p in results if p.get("grade") != "LOW 🌡️"]
+    # Only send HIGH confidence predictions
+    results = [(f, p) for f, p in results if p.get("grade") == "HIGH 🔥"]
 
     if results:
         sender.send_message(format_sport_summary("⚽", "FOOTBALL", results, date_str), parse_mode="Markdown")
@@ -138,8 +138,10 @@ def run_football(dedupe: bool = True):
             _sent_fixture_ids.add(fix["fixture_id"])  # mark as sent
         if dedupe:
             _save_sent_ids("football", today, _sent_fixture_ids)
+    elif fixtures:
+        sender.send_message("⚽ No HIGH confidence football predictions right now.", parse_mode="Markdown")
     elif not fixtures:
-        pass  # silent — no need to spam "no matches" every 2 hours
+        pass  # silent — no fixtures
     print(f"[FOOTBALL] {len(results)} new predictions sent, {len(skipped)} skipped, "
           f"{len(_sent_fixture_ids)} total sent today.")
 
@@ -181,8 +183,8 @@ def run_nba(dedupe: bool = True):
         pred = b_pred.predict(fix, home_stats=hs, away_stats=aws, api_win_prob=wp, sentiment_home=sentiment_home, sentiment_away=sentiment_away)
         results.append((fix, pred))
 
-    # Filter out LOW confidence predictions
-    results = [(f, p) for f, p in results if p.get("grade") != "LOW 🌡️"]
+    # Only send HIGH confidence predictions
+    results = [(f, p) for f, p in results if p.get("grade") == "HIGH 🔥"]
 
     if results:
         sender.send_message(format_sport_summary("🏀", "NBA BASKETBALL", results, date_str), parse_mode="Markdown")
@@ -237,8 +239,8 @@ def run_tennis(dedupe: bool = True):
         pred = t_pred.predict(fix, home_stats=home_stats, away_stats=away_stats, sentiment_home=sentiment_home, sentiment_away=sentiment_away)
         results.append((fix, pred))
 
-    # Filter out LOW confidence predictions
-    results = [(f, p) for f, p in results if p.get("grade") != "LOW 🌡️"]
+    # Only send HIGH confidence predictions
+    results = [(f, p) for f, p in results if p.get("grade") == "HIGH 🔥"]
 
     if results:
         sender.send_message(format_sport_summary("🎾", "TENNIS", results, date_str), parse_mode="Markdown")
