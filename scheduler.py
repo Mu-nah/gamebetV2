@@ -139,7 +139,9 @@ def run_football(dedupe: bool = True):
         if dedupe:
             _save_sent_ids("football", today, _sent_fixture_ids)
     elif fixtures:
-        sender.send_message("⚽ No HIGH confidence football predictions right now.", parse_mode="Markdown")
+        # Avoid spamming "no qualifying" messages on scheduled runs after we've already sent some today.
+        if not (dedupe and _sent_fixture_ids):
+            sender.send_message("⚽ No HIGH confidence football predictions right now.", parse_mode="Markdown")
     elif not fixtures:
         pass  # silent — no fixtures
     print(f"[FOOTBALL] {len(results)} new predictions sent, {len(skipped)} skipped, "
@@ -195,7 +197,9 @@ def run_nba(dedupe: bool = True):
         if dedupe:
             _save_sent_ids("nba", today, sent_ids)
     else:
-        sender.send_message("🏀 No qualifying NBA predictions today.", parse_mode="Markdown")
+        # If we already sent some today and we're deduping, don't spam "no qualifying".
+        if not (dedupe and sent_ids):
+            sender.send_message("🏀 No HIGH confidence NBA predictions right now.", parse_mode="Markdown")
     print(f"[NBA] {len(results)} sent (LOW confidence filtered out).")
 
 
@@ -251,7 +255,8 @@ def run_tennis(dedupe: bool = True):
         if dedupe:
             _save_sent_ids("tennis", today, sent_ids)
     else:
-        sender.send_message("🎾 No qualifying tennis predictions today.", parse_mode="Markdown")
+        if not (dedupe and sent_ids):
+            sender.send_message("🎾 No HIGH confidence tennis predictions right now.", parse_mode="Markdown")
     print(f"[TENNIS] {len(results)} sent (LOW confidence filtered out).")
 
 
