@@ -64,9 +64,14 @@ def _load_finbert():
                 "yiyanghkust/finbert-tone", use_fast=False
             )
         except Exception:
-            _tokenizer = AutoTokenizer.from_pretrained(
-                "yiyanghkust/finbert-tone", use_fast=True
-            )
+            try:
+                _tokenizer = AutoTokenizer.from_pretrained(
+                    "yiyanghkust/finbert-tone", use_fast=True
+                )
+            except Exception:
+                # Last-resort: force a known slow tokenizer class to avoid any fast<->slow conversion.
+                from transformers import BertTokenizer
+                _tokenizer = BertTokenizer.from_pretrained("yiyanghkust/finbert-tone")
         _model = AutoModelForSequenceClassification.from_pretrained(
             "yiyanghkust/finbert-tone"
         )
