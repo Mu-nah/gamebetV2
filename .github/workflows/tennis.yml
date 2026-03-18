@@ -34,9 +34,11 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .state
-          key: state-${{ github.workflow }}-${{ steps.day.outputs.day }}
+          # Cache is immutable per key; use a unique key per run so we can "update" state each run.
+          # Restore by WAT-day prefix so subsequent runs pick up the latest saved state for the day.
+          key: state-${{ github.workflow }}-${{ steps.day.outputs.day }}-${{ github.run_id }}
           restore-keys: |
-            state-${{ github.workflow }}-
+            state-${{ github.workflow }}-${{ steps.day.outputs.day }}-
       - name: Debug (commit + bot version)
         run: |
           echo "GITHUB_SHA=$GITHUB_SHA"
