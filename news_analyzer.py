@@ -38,15 +38,18 @@ WAT_OFFSET = timezone(timedelta(hours=1))
 # ── Cache to avoid fetching same team twice in one run ─────────────────────────
 _sentiment_cache = {}   # {"team_name:date": sentiment_dict}
 _finbert_loaded  = False
+_finbert_failed  = False
 _tokenizer       = None
 _model           = None
 
 
 def _load_finbert():
     """Load FinBERT model once and cache it."""
-    global _finbert_loaded, _tokenizer, _model
+    global _finbert_loaded, _finbert_failed, _tokenizer, _model
     if _finbert_loaded:
         return True
+    if _finbert_failed:
+        return False
     if not FINBERT_AVAILABLE:
         return False
     try:
@@ -66,7 +69,9 @@ def _load_finbert():
         print("[INFO] FinBERT loaded ✅")
         return True
     except Exception as e:
-        print(f"[WARN] FinBERT load failed: {e}")
+        # Don't retry dozens of times per run; if load fails once, treat sentiment as disabled.
+        _finbert_failed = True
+        print(f"[WARN] FinBERT load failed (sentiment disabled for this run): {e}")
         return False
 
 
