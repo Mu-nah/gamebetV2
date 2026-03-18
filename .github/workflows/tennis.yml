@@ -3,7 +3,8 @@ name: Tennis Predictions
 on:
   workflow_dispatch:
   schedule:
-    - cron: "0 8,12,16,20 * * *"
+    # Cron is UTC. Every 2 hours keeps it frequent without being too spammy.
+    - cron: "0 */2 * * *"
 
 jobs:
   run:
