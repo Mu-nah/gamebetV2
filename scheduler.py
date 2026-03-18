@@ -67,6 +67,38 @@ def _save_sent_ids(sport: str, day, ids_set: set) -> None:
         pass
 
 
+def _notice_path(sport: str, day) -> str:
+    safe_sport = "".join(c for c in (sport or "sport") if c.isalnum() or c in ("-", "_")).lower()
+    return os.path.join(STATE_DIR, f"notice_{safe_sport}_{day}.json")
+
+
+def _load_notice_sent(sport: str, day) -> bool:
+    """
+    Whether we've already sent a "no HIGH predictions" notice today for this sport.
+    Stored on disk so cron runs don't spam Telegram.
+    """
+    try:
+        os.makedirs(STATE_DIR, exist_ok=True)
+        path = _notice_path(sport, day)
+        if not os.path.exists(path):
+            return False
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return bool(data.get("sent")) if isinstance(data, dict) else bool(data)
+    except Exception:
+        return False
+
+
+def _save_notice_sent(sport: str, day) -> None:
+    try:
+        os.makedirs(STATE_DIR, exist_ok=True)
+        path = _notice_path(sport, day)
+        with open(path, "w", encoding="utf-8") as f:
+            json.dump({"sent": True}, f)
+    except Exception:
+        pass
+
+
 def _default_dedupe_mode() -> bool:
     """
     Default behavior:
@@ -139,9 +171,11 @@ def run_football(dedupe: bool = True):
         if dedupe:
             _save_sent_ids("football", today, _sent_fixture_ids)
     elif fixtures:
-        # Avoid spamming "no qualifying" messages on scheduled runs after we've already sent some today.
-        if not (dedupe and _sent_fixture_ids):
+        # Send the "no HIGH picks" notice at most once per day (cron runs shouldn't spam).
+        if not (dedupe and _sent_fixture_ids) and not (dedupe and _load_notice_sent("football", today)):
             sender.send_message("⚽ No HIGH confidence football predictions right now.", parse_mode="Markdown")
+            if dedupe:
+                _save_notice_sent("football", today)
     elif not fixtures:
         pass  # silent — no fixtures
     print(f"[FOOTBALL] {len(results)} new predictions sent, {len(skipped)} skipped, "
@@ -198,8 +232,10 @@ def run_nba(dedupe: bool = True):
             _save_sent_ids("nba", today, sent_ids)
     else:
         # If we already sent some today and we're deduping, don't spam "no qualifying".
-        if not (dedupe and sent_ids):
+        if not (dedupe and sent_ids) and not (dedupe and _load_notice_sent("nba", today)):
             sender.send_message("🏀 No HIGH confidence NBA predictions right now.", parse_mode="Markdown")
+            if dedupe:
+                _save_notice_sent("nba", today)
     print(f"[NBA] {len(results)} sent (LOW confidence filtered out).")
 
 
@@ -255,8 +291,10 @@ def run_tennis(dedupe: bool = True):
         if dedupe:
             _save_sent_ids("tennis", today, sent_ids)
     else:
-        if not (dedupe and sent_ids):
+        if not (dedupe and sent_ids) and not (dedupe and _load_notice_sent("tennis", today)):
             sender.send_message("🎾 No HIGH confidence tennis predictions right now.", parse_mode="Markdown")
+            if dedupe:
+                _save_notice_sent("tennis", today)
     print(f"[TENNIS] {len(results)} sent (LOW confidence filtered out).")
 
 
