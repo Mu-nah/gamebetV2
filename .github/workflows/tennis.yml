@@ -3,8 +3,8 @@ name: Tennis Predictions
 on:
   workflow_dispatch:
   schedule:
-    # Cron is UTC. Every 2 hours keeps it frequent without being too spammy.
-    - cron: "0 */2 * * *"
+    # Cron is UTC. Every 3 hours starting at 00:00 UTC = 01:00 WAT.
+    - cron: "0 */3 * * *"
 
 jobs:
   run:
