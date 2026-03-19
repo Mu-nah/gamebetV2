@@ -30,6 +30,20 @@ from api_client           import RotatingClient
 
 # WAT = UTC+1
 WAT_OFFSET = timezone(timedelta(hours=1))
+# Include early next-day fixtures in today's slate up to this hour (WAT).
+# Example: 3 means include 00:00–02:59 WAT fixtures from tomorrow in "today".
+EARLY_NEXT_DAY_CUTOFF_HOUR_WAT = int(os.getenv("EARLY_NEXT_DAY_CUTOFF_HOUR_WAT", "3") or "3")
+
+
+def _wat_window_end_for_today(wat_today):
+    """
+    End of the "today slate" window in WAT, inclusive of early-next-day games.
+    Returns a datetime in WAT.
+    """
+    from datetime import timedelta as _td
+    day_start = datetime(wat_today.year, wat_today.month, wat_today.day, 0, 0, 0, tzinfo=WAT_OFFSET)
+    # Cutoff is tomorrow at EARLY_NEXT_DAY_CUTOFF_HOUR_WAT:00 WAT (exclusive).
+    return day_start + _td(days=1, hours=EARLY_NEXT_DAY_CUTOFF_HOUR_WAT)
 
 # One shared session for non-keyed endpoints (ESPN, tennis, etc.).
 # Default: ignore HTTP(S)_PROXY env vars because they are often misconfigured on Windows.
@@ -444,8 +458,10 @@ def fetch_football_fixtures():
     # We report fixtures in WAT, but api-football's `date=YYYY-MM-DD` is UTC-based.
     # Around midnight WAT, using only "today UTC" can pull the wrong matchday.
     wat_today = datetime.now(WAT_OFFSET).date()
+    window_end_wat = _wat_window_end_for_today(wat_today)
     start_utc = datetime.combine(wat_today, dt_time.min, tzinfo=WAT_OFFSET).astimezone(timezone.utc).date()
-    end_utc = datetime.combine(wat_today, dt_time.max, tzinfo=WAT_OFFSET).astimezone(timezone.utc).date()
+    # Extend the window to include early-next-day fixtures (e.g., 00:00–02:59 WAT tomorrow).
+    end_utc = (window_end_wat - timedelta(seconds=1)).astimezone(timezone.utc).date()
     utc_dates = sorted({start_utc.strftime("%Y-%m-%d"), end_utc.strftime("%Y-%m-%d")})
     date_from = utc_dates[0]
     date_to = utc_dates[-1]
@@ -494,7 +510,8 @@ def fetch_football_fixtures():
                         kickoff = f["fixture"]["date"]
                         try:
                             dt = datetime.fromisoformat(str(kickoff).replace("Z", "+00:00")).astimezone(WAT_OFFSET)
-                            if dt.date() != wat_today:
+                            # Include today, plus early-next-day fixtures up to the cutoff.
+                            if dt < datetime(wat_today.year, wat_today.month, wat_today.day, 0, 0, tzinfo=WAT_OFFSET) or dt >= window_end_wat:
                                 continue
                         except Exception:
                             pass
@@ -544,7 +561,7 @@ def fetch_football_fixtures():
                         kickoff = m["utcDate"]
                         try:
                             dt = datetime.fromisoformat(str(kickoff).replace("Z", "+00:00")).astimezone(WAT_OFFSET)
-                            if dt.date() != wat_today:
+                            if dt < datetime(wat_today.year, wat_today.month, wat_today.day, 0, 0, tzinfo=WAT_OFFSET) or dt >= window_end_wat:
                                 continue
                         except Exception:
                             pass
@@ -567,6 +584,19 @@ def fetch_football_fixtures():
     # Fallback to ESPN soccer if still empty (no key required).
     if not fixtures:
         espn_fixtures = fetch_football_fixtures_espn(wat_today)
+        # Also fetch tomorrow and keep only early-next-day fixtures (up to cutoff).
+        try:
+            espn_next = fetch_football_fixtures_espn(wat_today + timedelta(days=1))
+        except Exception:
+            espn_next = []
+        if espn_next:
+            for f in espn_next:
+                try:
+                    dt = datetime.fromisoformat(str(f.get("kickoff")).replace("Z", "+00:00")).astimezone(WAT_OFFSET)
+                    if dt < window_end_wat:
+                        espn_fixtures.append(f)
+                except Exception:
+                    pass
         if espn_fixtures:
             fixtures.extend(espn_fixtures)
             print(f"[INFO] ESPN soccer: {len(espn_fixtures)} fixtures.")
@@ -1077,8 +1107,8 @@ def _ensure_nba_stats_loaded(season="2024-25"):
 
 def fetch_nba_fixtures():
     """
-    Fetch NBA games for TODAY in WAT (midnight to midnight WAT).
-    Day boundary = 23:59 WAT. Games at 00:00 WAT belong to the NEXT day.
+    Fetch NBA games for TODAY in WAT (midnight to midnight WAT),
+    plus early-next-day fixtures up to EARLY_NEXT_DAY_CUTOFF_HOUR_WAT.
 
     Logic:
       - WAT today = now_wat.date()
@@ -1095,12 +1125,11 @@ def fetch_nba_fixtures():
     now_utc  = datetime.now(timezone.utc)
     now_wat  = now_utc.astimezone(WAT_OFFSET)
 
-    # WAT day boundaries: 00:00 WAT → 23:59 WAT today
+    # WAT day boundaries: 00:00 WAT today → cutoff tomorrow
     today_wat_date = now_wat.date()
     day_start_wat  = datetime(today_wat_date.year, today_wat_date.month,
                               today_wat_date.day, 0, 0, tzinfo=WAT_OFFSET)
-    day_end_wat    = datetime(today_wat_date.year, today_wat_date.month,
-                              today_wat_date.day, 23, 59, 59, tzinfo=WAT_OFFSET)
+    day_end_wat    = _wat_window_end_for_today(today_wat_date)
 
     # Fetch UTC dates that overlap with today WAT
     # WAT is UTC+1, so WAT today spans UTC yesterday-evening to UTC tonight
@@ -1151,18 +1180,9 @@ def fetch_nba_fixtures():
 
         if tip_dt:
             tip_wat = tip_dt.astimezone(WAT_OFFSET)
-            # Include today's games (00:00-23:59 WAT)
-            # PLUS next day 00:00-00:59 WAT only (midnight hour, clearly labelled)
-            next_day_midnight_cutoff = datetime(
-                today_wat_date.year, today_wat_date.month, today_wat_date.day,
-                tzinfo=WAT_OFFSET
-            ) + _td(days=1, hours=1)   # next day up to 00:59 WAT only
-            if tip_wat.date() == today_wat_date:
-                pass   # today's game — include
-            elif tip_wat < next_day_midnight_cutoff:
-                pass   # 00:00-00:59 WAT next day — include, marked as next day
-            else:
-                continue   # 01:00 WAT onwards tomorrow — exclude
+            # Include today's games, plus early-next-day games up to the cutoff.
+            if tip_wat < day_start_wat or tip_wat >= day_end_wat:
+                continue
             if tip_dt < now_utc - _td(hours=2):
                 continue   # already well underway
 
@@ -1367,7 +1387,10 @@ def _call_tennis_api(params):
 
 
 def fetch_tennis_fixtures():
-    today = datetime.now(WAT_OFFSET).strftime("%Y-%m-%d")  # WAT date
+    wat_today = datetime.now(WAT_OFFSET).date()
+    window_end_wat = _wat_window_end_for_today(wat_today)
+    today = wat_today.strftime("%Y-%m-%d")  # WAT date
+    tomorrow = (wat_today + timedelta(days=1)).strftime("%Y-%m-%d")
 
     MAJOR_KEYWORDS = [
         "atp", "wta", "grand slam", "masters", "challenger",
@@ -1380,7 +1403,8 @@ def fetch_tennis_fixtures():
     raw_data = _call_tennis_api({
         "method":     "get_fixtures",
         "date_start": today,
-        "date_stop":  today,
+        # Query tomorrow too, then filter to early-next-day window in WAT.
+        "date_stop":  tomorrow,
     })
 
     if not raw_data:
@@ -1416,6 +1440,13 @@ def fetch_tennis_fixtures():
         e_date      = g.get("event_date", today)
         e_time      = g.get("event_time", "00:00")
         kickoff     = f"{e_date}T{e_time}:00+00:00"
+        # Filter to WAT today window (including early-next-day fixtures up to cutoff).
+        try:
+            dt_wat = datetime.fromisoformat(str(kickoff).replace("Z", "+00:00")).astimezone(WAT_OFFSET)
+            if dt_wat < datetime(wat_today.year, wat_today.month, wat_today.day, 0, 0, tzinfo=WAT_OFFSET) or dt_wat >= window_end_wat:
+                continue
+        except Exception:
+            pass
 
         # Cache player keys for later lookup (so stats can be fetched even if only name is known)
         if home_pkey:
