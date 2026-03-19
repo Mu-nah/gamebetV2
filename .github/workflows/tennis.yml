@@ -6,6 +6,10 @@ on:
     # Cron is UTC. Every 3 hours starting at 00:00 UTC = 01:00 WAT.
     - cron: "0 */3 * * *"
 
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: false
+
 jobs:
   run:
     runs-on: ubuntu-latest
