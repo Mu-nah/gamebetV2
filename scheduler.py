@@ -260,6 +260,7 @@ def run_tennis(dedupe: bool = True):
     sent_ids = _load_sent_ids("tennis", today) if dedupe else set()
     if dedupe:
         print(f"[INFO] Tennis dedupe ON — {len(sent_ids)} fixture(s) already sent today.")
+    women_min_conf = int(os.getenv("TENNIS_WOMEN_MIN_CONFIDENCE", "75") or "75")
 
     fixtures = fetch_tennis_fixtures()
     results  = []
@@ -284,20 +285,56 @@ def run_tennis(dedupe: bool = True):
         pred = t_pred.predict(fix, home_stats=home_stats, away_stats=away_stats, sentiment_home=sentiment_home, sentiment_away=sentiment_away)
         results.append((fix, pred))
 
-    # Only send HIGH confidence predictions
-    results = [(f, p) for f, p in results if p.get("grade") == "HIGH 🔥"]
+    # Only send HIGH confidence predictions.
+    # Extra rule: WOMEN matches must meet a higher minimum confidence threshold.
+    def _conf_ok(p, min_conf):
+        try:
+            return float(p.get("confidence", 0) or 0) >= float(min_conf)
+        except Exception:
+            return False
+
+    filtered = []
+    for f, p in results:
+        if p.get("grade") != "HIGH 🔥":
+            continue
+        gender = (f.get("gender") or "").lower()
+        # Women (including women doubles) must meet the stricter threshold.
+        if gender == "women" and not _conf_ok(p, women_min_conf):
+            continue
+        filtered.append((f, p))
+
+    results = filtered
 
     if results:
-        sender.send_message(format_sport_summary("🎾", "TENNIS", results, date_str), parse_mode="Markdown")
-        for fix, pred in results:
-            sender.send_message(format_tennis_card(fix, pred), parse_mode="Markdown")
-            if fix.get("fixture_id") is not None:
-                sent_ids.add(str(fix["fixture_id"]))
+        women = [(f, p) for f, p in results if (f.get("gender") or "").lower() == "women"]
+        mixed = [(f, p) for f, p in results if (f.get("gender") or "").lower() == "mixed"]
+        men   = [(f, p) for f, p in results if (f.get("gender") or "").lower() not in ("women", "mixed")]
+
+        if women:
+            sender.send_message(format_sport_summary("🎾", "TENNIS (WOMEN)", women, date_str), parse_mode="Markdown")
+            for fix, pred in women:
+                sender.send_message(format_tennis_card(fix, pred), parse_mode="Markdown")
+                if fix.get("fixture_id") is not None:
+                    sent_ids.add(str(fix["fixture_id"]))
+
+        if mixed:
+            sender.send_message(format_sport_summary("🎾", "TENNIS (MIXED)", mixed, date_str), parse_mode="Markdown")
+            for fix, pred in mixed:
+                sender.send_message(format_tennis_card(fix, pred), parse_mode="Markdown")
+                if fix.get("fixture_id") is not None:
+                    sent_ids.add(str(fix["fixture_id"]))
+
+        if men:
+            sender.send_message(format_sport_summary("🎾", "TENNIS (MEN)", men, date_str), parse_mode="Markdown")
+            for fix, pred in men:
+                sender.send_message(format_tennis_card(fix, pred), parse_mode="Markdown")
+                if fix.get("fixture_id") is not None:
+                    sent_ids.add(str(fix["fixture_id"]))
         _save_sent_ids("tennis", today, sent_ids)
     else:
         sent_any = _load_sent_ids("tennis", today)
         if not sent_any and not _load_notice_sent("tennis", today):
-            sender.send_message("🎾 No HIGH confidence tennis predictions right now.", parse_mode="Markdown")
+            sender.send_message("🎾 No qualifying tennis predictions right now.", parse_mode="Markdown")
             _save_notice_sent("tennis", today)
     if skipped_already_sent:
         print(f"[INFO] Tennis: skipped {skipped_already_sent} already-sent fixture(s) today.")

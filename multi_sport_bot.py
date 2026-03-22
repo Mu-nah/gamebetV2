@@ -1415,14 +1415,41 @@ def fetch_tennis_fixtures():
     matches  = []
     seen_ids = set()
 
+    def _gender_from_text(text: str) -> str:
+        t = (text or "").lower()
+        if "mixed" in t:
+            return "mixed"
+        if "wta" in t or "women" in t:
+            return "women"
+        # Challenger is men; ATP is men. (ITF is skipped earlier.)
+        if "atp" in t or "challenger" in t or "men" in t:
+            return "men"
+        return "unknown"
+
+    def _event_format(ev_type: str, tournament: str) -> str:
+        """
+        Return one of: singles, doubles, mixed_doubles, unknown
+        """
+        t = f"{ev_type or ''} {tournament or ''}".lower()
+        if "mixed" in t and "double" in t:
+            return "mixed_doubles"
+        if "double" in t:
+            return "doubles"
+        if "single" in t:
+            return "singles"
+        return "unknown"
+
     for g in raw_data:
         gid = g.get("event_key")
         if gid in seen_ids:
             continue
         seen_ids.add(gid)
 
-        tournament = g.get("tournament_name", "") or g.get("event_type_type", "")
-        t_lower    = tournament.lower()
+        tournament = g.get("tournament_name", "") or ""
+        ev_type    = g.get("event_type_type", "") or ""
+        # Use both fields for filtering (some tournaments are generic names like "Asuncion",
+        # but ev_type contains "ATP/WTA/Challenger").
+        t_lower    = f"{tournament} {ev_type}".lower()
 
         if any(kw in t_lower for kw in SKIP_KEYWORDS):
             continue
@@ -1456,16 +1483,27 @@ def fetch_tennis_fixtures():
             tennis_player_key = _normalize_player_name(away_p)
             _tennis_player_key_map[tennis_player_key] = away_pkey
 
+        tournament_full = tournament
+        if ev_type and ev_type.lower() not in tournament.lower():
+            tournament_full = f"{tournament} ({ev_type})" if tournament else ev_type
+
+        gender = _gender_from_text(ev_type) if ev_type else _gender_from_text(tournament)
+        fmt = _event_format(ev_type, tournament)
+
         matches.append({
             "sport":          "tennis",
             "fixture_id":     gid,
-            "league":         tournament,
+            "league":         tournament_full,
+            "event_type":     ev_type,
+            "gender":         gender,
+            "match_format":   fmt,
             "home_team":      home_p,
             "away_team":      away_p,
             "home_player_key": home_pkey,
             "away_player_key": away_pkey,
             "kickoff":        kickoff,
-            "tournament":     tournament,
+            # Include ATP/WTA/Challenger in the tournament string so tier detection works.
+            "tournament":     tournament_full,
             "venue":          "TBC",
         })
 
@@ -1560,6 +1598,24 @@ def format_basketball_card(fix, pred):
 
 # ── Tennis card ────────────────────────────────────────────────────────────────
 def format_tennis_card(fix, pred):
+    gender = (fix.get("gender") or "").strip().lower()
+    fmt = (fix.get("match_format") or "").strip().lower()
+    gender_tag = ""
+    if gender == "women":
+        gender_tag = " (Women)"
+    elif gender == "men":
+        gender_tag = " (Men)"
+    elif gender == "mixed":
+        gender_tag = " (Mixed)"
+
+    format_tag = ""
+    if fmt == "mixed_doubles":
+        format_tag = " Doubles"
+    elif fmt == "doubles":
+        format_tag = " Doubles"
+    elif fmt == "singles":
+        format_tag = ""
+
     conf = int(round(float(pred.get("confidence", 0) or 0)))
     conf = max(0, min(conf, 100))
     conf_bar   = "█" * (conf // 10) + "░" * (10 - conf // 10)
@@ -1573,7 +1629,7 @@ def format_tennis_card(fix, pred):
         rank_line = f"\n🏅 *Rankings:* 🏠`{rh}`  ✈️`{ra}`"
 
     return f"""
-🎾 *TENNIS — {pred['tournament']}*
+🎾 *TENNIS{gender_tag}{format_tag} — {pred['tournament']}*
 🆚 *{fix['home_team']}* vs *{fix['away_team']}*
 ⏰ `{ko_str(fix['kickoff'])}` 🏟️ _{pred['surface']} Court_{rank_line}
 
