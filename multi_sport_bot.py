@@ -1407,6 +1407,14 @@ def fetch_tennis_fixtures():
         "date_stop":  tomorrow,
     })
 
+    # Fetch yesterday for back-to-back detection
+    yesterday = (wat_today - timedelta(days=1)).strftime("%Y-%m-%d")
+    raw_yesterday = _call_tennis_api({
+        "method":     "get_fixtures",
+        "date_start": yesterday,
+        "date_stop":  yesterday,
+    }) or []
+
     if not raw_data:
         print("[WARN] Tennis: no fixtures returned.")
         return []
@@ -1439,6 +1447,29 @@ def fetch_tennis_fixtures():
             return "singles"
         return "unknown"
 
+    def _qualifies(t_lower: str) -> bool:
+        if any(kw in t_lower for kw in SKIP_KEYWORDS):
+            return False
+        if not any(kw in t_lower for kw in MAJOR_KEYWORDS):
+            return False
+        return True
+
+    def _extract_players(raw_list):
+        players = set()
+        for g in raw_list or []:
+            tournament = g.get("tournament_name", "") or ""
+            ev_type    = g.get("event_type_type", "") or ""
+            t_lower    = f"{tournament} {ev_type}".lower()
+            if not _qualifies(t_lower):
+                continue
+            home_p = g.get("event_first_player",  "Player 1")
+            away_p = g.get("event_second_player", "Player 2")
+            players.add(_normalize_player_name(home_p))
+            players.add(_normalize_player_name(away_p))
+        return players
+
+    yesterday_players = _extract_players(raw_yesterday)
+
     for g in raw_data:
         gid = g.get("event_key")
         if gid in seen_ids:
@@ -1451,9 +1482,7 @@ def fetch_tennis_fixtures():
         # but ev_type contains "ATP/WTA/Challenger").
         t_lower    = f"{tournament} {ev_type}".lower()
 
-        if any(kw in t_lower for kw in SKIP_KEYWORDS):
-            continue
-        if not any(kw in t_lower for kw in MAJOR_KEYWORDS):
+        if not _qualifies(t_lower):
             continue
 
         status = g.get("event_status", "")
@@ -1490,6 +1519,9 @@ def fetch_tennis_fixtures():
         gender = _gender_from_text(ev_type) if ev_type else _gender_from_text(tournament)
         fmt = _event_format(ev_type, tournament)
 
+        b2b_home = _normalize_player_name(home_p) in yesterday_players
+        b2b_away = _normalize_player_name(away_p) in yesterday_players
+
         matches.append({
             "sport":          "tennis",
             "fixture_id":     gid,
@@ -1505,6 +1537,9 @@ def fetch_tennis_fixtures():
             # Include ATP/WTA/Challenger in the tournament string so tier detection works.
             "tournament":     tournament_full,
             "venue":          "TBC",
+            "back_to_back":   bool(b2b_home or b2b_away),
+            "b2b_home":       bool(b2b_home),
+            "b2b_away":       bool(b2b_away),
         })
 
     print(f"[INFO] Tennis: {len(matches)} qualifying matches today.")
@@ -1628,10 +1663,20 @@ def format_tennis_card(fix, pred):
         ra = f"#{rank_away}" if rank_away < 999 else "NR"
         rank_line = f"\n🏅 *Rankings:* 🏠`{rh}`  ✈️`{ra}`"
 
+    b2b_line = ""
+    if fix.get("back_to_back"):
+        if fix.get("b2b_home") and fix.get("b2b_away"):
+            who = "Both players"
+        elif fix.get("b2b_home"):
+            who = f"{fix['home_team']}"
+        else:
+            who = f"{fix['away_team']}"
+        b2b_line = f"\nBack-to-back: {who} played yesterday"
+
     return f"""
 🎾 *TENNIS{gender_tag}{format_tag} — {pred['tournament']}*
 🆚 *{fix['home_team']}* vs *{fix['away_team']}*
-⏰ `{ko_str(fix['kickoff'])}` 🏟️ _{pred['surface']} Court_{rank_line}
+⏰ `{ko_str(fix['kickoff'])}` 🏟️ _{pred['surface']} Court_{rank_line}{b2b_line}
 
 🎯 {pred['grade']} | 🎾 *{pred['winner_label']}* `{conf}%`
 `[{conf_bar}]`
