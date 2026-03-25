@@ -186,8 +186,9 @@ def run_football(dedupe: bool = True):
 
 def run_nba(dedupe: bool = True):
     from multi_sport_bot import (
-        validate_config, fetch_nba_fixtures,
-        fetch_nba_team_season_stats, _ensure_nba_stats_loaded,
+        validate_config, fetch_nba_fixtures, fetch_wnba_fixtures,
+        fetch_nba_team_season_stats, fetch_wnba_team_season_stats,
+        _ensure_nba_stats_loaded, _ensure_wnba_stats_loaded,
         format_basketball_card, format_sport_summary,
         TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID
     )
@@ -201,10 +202,12 @@ def run_nba(dedupe: bool = True):
 
     # Load team stats ONCE before the loop
     _ensure_nba_stats_loaded()
+    _ensure_wnba_stats_loaded()
 
     now_wat = datetime.now(WAT_OFFSET)
     today = now_wat.date()
     sent_ids = _load_sent_ids("nba", today) if dedupe else set()
+    sent_ids_wnba = _load_sent_ids("wnba", today) if dedupe else set()
 
     fixtures = fetch_nba_fixtures()
     results  = []
@@ -238,6 +241,36 @@ def run_nba(dedupe: bool = True):
             sender.send_message("🏀 No HIGH confidence NBA predictions right now.", parse_mode="Markdown")
             _save_notice_sent("nba", today)
     print(f"[NBA] {len(results)} sent (LOW confidence filtered out).")
+
+    # ---- WNBA (women) ----
+    wnba_fixtures = fetch_wnba_fixtures()
+    wnba_results = []
+    for fix in wnba_fixtures:
+        fid = str(fix.get("fixture_id") or "")
+        if fid and fid in sent_ids_wnba:
+            continue
+        hs = fetch_wnba_team_season_stats(fix.get("home_abbrev"), team_name=fix.get("home_team", ""))
+        aws = fetch_wnba_team_season_stats(fix.get("away_abbrev"), team_name=fix.get("away_team", ""))
+        sentiment_home = get_team_sentiment(fix["home_team"], "basketball")["score"]
+        sentiment_away = get_team_sentiment(fix["away_team"], "basketball")["score"]
+        pred = b_pred.predict(fix, home_stats=hs, away_stats=aws, api_win_prob=None, sentiment_home=sentiment_home, sentiment_away=sentiment_away)
+        wnba_results.append((fix, pred))
+
+    wnba_results = [(f, p) for f, p in wnba_results if p.get("grade") == "HIGH 🔥"]
+
+    if wnba_results:
+        sender.send_message(format_sport_summary("🏀", "WNBA (WOMEN)", wnba_results, date_str), parse_mode="Markdown")
+        for fix, pred in wnba_results:
+            sender.send_message(format_basketball_card(fix, pred), parse_mode="Markdown")
+            if fix.get("fixture_id") is not None:
+                sent_ids_wnba.add(str(fix["fixture_id"]))
+        _save_sent_ids("wnba", today, sent_ids_wnba)
+    else:
+        sent_any = _load_sent_ids("wnba", today)
+        if not sent_any and not _load_notice_sent("wnba", today):
+            sender.send_message("🏀 No HIGH confidence WNBA predictions right now.", parse_mode="Markdown")
+            _save_notice_sent("wnba", today)
+    print(f"[WNBA] {len(wnba_results)} sent (LOW confidence filtered out).")
 
 
 def run_tennis(dedupe: bool = True):

@@ -175,6 +175,14 @@ FOOTBALL_ESPN_LEAGUES = {
     848: "uefa.europa.conf",  # Conference League
 }
 
+# ESPN-only women's leagues (no api-football IDs required)
+FOOTBALL_WOMEN_ESPN_LEAGUES = {
+    "eng.w.1":        "Women Super League",
+    "esp.w.1":        "Liga F",
+    "uefa.wchampions":"UEFA Women's Champions League",
+    "usa.nwsl":       "NWSL Women",
+}
+
 MIN_MATCHES_PLAYED  = 10
 VALUE_BET_THRESHOLD = 0.12
 BOOKMAKER_ID        = 6
@@ -395,13 +403,22 @@ def fetch_football_team_stats_espn(team_id, league_key: str):
         return {}
 
 
-def fetch_football_fixtures_espn(wat_today):
+def fetch_football_fixtures_espn(wat_today, league_keys=None, name_map=None, gender=None):
     ymd = wat_today.strftime("%Y%m%d")
     fixtures = []
     seen = set()
 
-    for league_id, (name, _) in FOOTBALL_LEAGUES.items():
-        league_key = FOOTBALL_ESPN_LEAGUES.get(league_id)
+    if league_keys is None:
+        league_keys = []
+        name_map = {}
+        for league_id, (name, _) in FOOTBALL_LEAGUES.items():
+            league_key = FOOTBALL_ESPN_LEAGUES.get(league_id)
+            if league_key:
+                league_keys.append(league_key)
+                name_map[league_key] = name
+
+    for league_key in league_keys:
+        name = (name_map or {}).get(league_key, league_key)
         if not league_key:
             continue
 
@@ -442,6 +459,7 @@ def fetch_football_fixtures_espn(wat_today):
                 "fixture_id": fid,
                 "league": name,
                 "league_id": league_key,
+                "gender": gender,
                 "home_team": ((home.get("team") or {}).get("displayName")) or "Home",
                 "away_team": ((away.get("team") or {}).get("displayName")) or "Away",
                 "home_id": (home.get("team") or {}).get("id"),
@@ -600,6 +618,28 @@ def fetch_football_fixtures():
         if espn_fixtures:
             fixtures.extend(espn_fixtures)
             print(f"[INFO] ESPN soccer: {len(espn_fixtures)} fixtures.")
+
+    # Always add ESPN women's leagues (no api-football IDs required).
+    try:
+        women_keys = list(FOOTBALL_WOMEN_ESPN_LEAGUES.keys())
+        women_map = FOOTBALL_WOMEN_ESPN_LEAGUES
+        w_fixtures = fetch_football_fixtures_espn(wat_today, league_keys=women_keys, name_map=women_map, gender="women")
+        # Also include early-next-day (up to cutoff) from tomorrow
+        w_next = fetch_football_fixtures_espn(wat_today + timedelta(days=1), league_keys=women_keys, name_map=women_map, gender="women")
+        if w_next:
+            window_end_wat = _wat_window_end_for_today(wat_today)
+            for f in w_next:
+                try:
+                    dt = datetime.fromisoformat(str(f.get("kickoff")).replace("Z", "+00:00")).astimezone(WAT_OFFSET)
+                    if dt < window_end_wat:
+                        w_fixtures.append(f)
+                except Exception:
+                    pass
+        if w_fixtures:
+            fixtures.extend(w_fixtures)
+            print(f"[INFO] ESPN women's soccer: {len(w_fixtures)} fixtures.")
+    except Exception:
+        pass
 
     if not fixtures:
         print(
@@ -800,6 +840,7 @@ def fetch_football_odds(fixture_id):
 # ═══════════════════════════════════════════════════════════════════════════════
 
 ESPN_NBA_STANDINGS = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/standings"
+ESPN_WNBA_STANDINGS = "https://site.api.espn.com/apis/site/v2/sports/basketball/wnba/standings"
 ESPN_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
     "Accept": "application/json",
@@ -808,6 +849,7 @@ ESPN_HEADERS = {
 # Cache: {abbreviation -> stats_dict}
 _nba_stats_cache = {}    # keyed by team abbreviation e.g. "BOS"
 _nba_bdl_id_map  = {}    # BallDontLie team_id -> abbreviation
+_wnba_stats_cache = {}   # keyed by team abbreviation e.g. "NYL"
 
 # Hardcoded BallDontLie v1 team_id → abbreviation (IDs never change)
 _BDL_ID_TO_ABBREV = {
@@ -969,6 +1011,90 @@ def _load_nba_stats_from_espn():
         _load_nba_stats_from_espn_scoreboard()
 
 
+def _load_wnba_stats_from_espn():
+    """Fetch live WNBA team stats from ESPN."""
+    if _wnba_stats_cache:
+        return
+
+    try:
+        print("[INFO] Fetching WNBA stats from ESPN (team details)...")
+        resp = _http.get(
+            "https://site.api.espn.com/apis/site/v2/sports/basketball/wnba/teams",
+            headers=ESPN_HEADERS,
+            params={"limit": 32},
+            timeout=10,
+        )
+        if resp.status_code != 200:
+            print(f"[WARN] ESPN WNBA teams list: HTTP {resp.status_code}")
+            return
+
+        data = resp.json()
+        teams = (data.get("sports", [{}])[0]
+                     .get("leagues", [{}])[0]
+                     .get("teams", []))
+        if not teams:
+            print("[WARN] ESPN WNBA teams list returned no teams")
+            return
+
+        abbrev_to_id = {
+            entry.get("team", {}).get("abbreviation"): entry.get("team", {}).get("id")
+            for entry in teams
+            if entry.get("team", {}).get("abbreviation") and entry.get("team", {}).get("id")
+        }
+
+        for abbrev, espn_id in abbrev_to_id.items():
+            try:
+                resp = _http.get(
+                    f"https://site.api.espn.com/apis/site/v2/sports/basketball/wnba/teams/{espn_id}",
+                    headers=ESPN_HEADERS,
+                    timeout=10,
+                )
+                if resp.status_code != 200:
+                    continue
+
+                team_data = resp.json().get("team", {})
+                record_items = team_data.get("record", {}).get("items", [])
+                if not record_items:
+                    continue
+
+                total_item = next((i for i in record_items if i.get("type") == "total"), record_items[0])
+                stats_raw = {s.get("name"): s.get("value") for s in total_item.get("stats", [])}
+
+                w = float(stats_raw.get("wins", 0))
+                l = float(stats_raw.get("losses", 0))
+                gp = w + l
+                w_pct = w / gp if gp > 0 else 0.5
+
+                ppg = float(stats_raw.get("avgPointsFor", 80.0))
+                opp_ppg = float(stats_raw.get("avgPointsAgainst", 80.0))
+                diff = float(stats_raw.get("differential", ppg - opp_ppg))
+
+                _wnba_stats_cache[abbrev] = {
+                    "ppg":          round(ppg, 1),
+                    "opp_ppg":      round(opp_ppg, 1),
+                    "net_rating":   round(diff, 1),
+                    "off_rating":   round(ppg, 1),
+                    "def_rating":   round(opp_ppg, 1),
+                    "pace":         94.0,
+                    "recent_trend": round((w_pct - 0.5) * 4, 2),
+                    "wins":         int(w),
+                    "losses":       int(l),
+                    "win_pct":      round(w_pct, 3),
+                }
+            except Exception:
+                continue
+
+        if _wnba_stats_cache:
+            sample = list(_wnba_stats_cache.items())[:3]
+            for abbr, s in sample:
+                print(f"[INFO] ESPN WNBA {abbr}: W={s['wins']} L={s['losses']} W%={s['win_pct']:.3f}")
+            print(f"[INFO] ESPN WNBA stats loaded: {len(_wnba_stats_cache)} teams ✅")
+        else:
+            print("[WARN] ESPN WNBA stats could not be loaded.")
+    except Exception as e:
+        print(f"[WARN] ESPN WNBA stats fetch failed: {e}")
+
+
 def _load_nba_stats_from_espn_scoreboard():
     """Fallback: build W/L stats from ESPN scoreboard season records."""
     if _nba_stats_cache:
@@ -1095,6 +1221,26 @@ def fetch_nba_team_season_stats(team_id, season="2024-25", team_name=""):
     return stats
 
 
+def _ensure_wnba_stats_loaded():
+    _load_wnba_stats_from_espn()
+    if not _wnba_stats_cache:
+        print("[WARN] ESPN WNBA stats failed — no stats available. Predictions will use defaults.")
+
+
+def fetch_wnba_team_season_stats(team_abbrev, team_name=""):
+    if not _wnba_stats_cache:
+        _ensure_wnba_stats_loaded()
+    if not team_abbrev:
+        return {}
+    stats = _wnba_stats_cache.get(team_abbrev, {})
+    if not stats and team_name:
+        # Try match by team name (fallback)
+        for abbr, s in _wnba_stats_cache.items():
+            if team_name.lower().replace(" ", "") in abbr.lower():
+                return s
+    return stats
+
+
 def _ensure_nba_stats_loaded(season="2024-25"):
     """
     Load NBA team stats ONCE before the game loop.
@@ -1207,6 +1353,107 @@ def fetch_nba_fixtures():
 
     games.sort(key=_sort)
     print(f"[INFO] NBA: {len(games)} games in next 24h "
+          f"(now {now_wat.strftime('%H:%M WAT')}).")
+    return games
+
+
+def fetch_wnba_fixtures():
+    """
+    Fetch WNBA games for TODAY in WAT (midnight to midnight WAT),
+    plus early-next-day fixtures up to EARLY_NEXT_DAY_CUTOFF_HOUR_WAT.
+    """
+    from datetime import timedelta as _td
+
+    now_utc  = datetime.now(timezone.utc)
+    now_wat  = now_utc.astimezone(WAT_OFFSET)
+
+    today_wat_date = now_wat.date()
+    day_start_wat  = datetime(today_wat_date.year, today_wat_date.month,
+                              today_wat_date.day, 0, 0, tzinfo=WAT_OFFSET)
+    day_end_wat    = _wat_window_end_for_today(today_wat_date)
+
+    # Fetch UTC dates that overlap with today WAT
+    utc_dates = set()
+    utc_dates.add(now_utc.strftime("%Y%m%d"))
+    utc_dates.add((now_utc - _td(days=1)).strftime("%Y%m%d"))
+    utc_dates.add((now_utc + _td(days=1)).strftime("%Y%m%d"))
+
+    events = []
+    for date_str in sorted(utc_dates):
+        try:
+            resp = _http.get(
+                "https://site.api.espn.com/apis/site/v2/sports/basketball/wnba/scoreboard",
+                headers=ESPN_HEADERS,
+                params={"dates": date_str},
+                timeout=10,
+            )
+        except Exception:
+            continue
+        if resp.status_code != 200:
+            continue
+        try:
+            events.extend(resp.json().get("events", []) or [])
+        except Exception:
+            continue
+
+    seen = set()
+    games = []
+    for ev in events:
+        eid = ev.get("id")
+        if not eid or eid in seen:
+            continue
+        seen.add(eid)
+
+        status = ev.get("status", {}).get("type", {})
+        if status.get("state") in ("post", "postponed"):
+            continue
+
+        comps = ev.get("competitions") or []
+        comp = comps[0] if comps else {}
+        competitors = comp.get("competitors") or []
+        home = next((c for c in competitors if c.get("homeAway") == "home"), None)
+        away = next((c for c in competitors if c.get("homeAway") == "away"), None)
+        if not home or not away:
+            continue
+
+        kickoff = ev.get("date") or comp.get("date")
+        tip_dt = None
+        if kickoff:
+            try:
+                tip_dt = datetime.fromisoformat(str(kickoff).replace("Z", "+00:00"))
+                if tip_dt.tzinfo is None:
+                    tip_dt = tip_dt.replace(tzinfo=timezone.utc)
+            except Exception:
+                tip_dt = None
+
+        if tip_dt:
+            tip_wat = tip_dt.astimezone(WAT_OFFSET)
+            if tip_wat < day_start_wat or tip_wat >= day_end_wat:
+                continue
+            if tip_dt < now_utc - _td(hours=2):
+                continue
+
+        games.append({
+            "sport":      "basketball",
+            "league":     "WNBA",
+            "fixture_id": f"wnba_{eid}",
+            "home_team":  ((home.get("team") or {}).get("displayName")) or "Home",
+            "away_team":  ((away.get("team") or {}).get("displayName")) or "Away",
+            "home_abbrev": ((home.get("team") or {}).get("abbreviation")) or "",
+            "away_abbrev": ((away.get("team") or {}).get("abbreviation")) or "",
+            "kickoff":    kickoff,
+            "venue":      ((comp.get("venue") or {}).get("fullName")) or "TBC",
+            "gender":     "women",
+        })
+
+    def _sort(g):
+        try:
+            return datetime.fromisoformat(str(g["kickoff"]).replace("Z", "+00:00"))
+        except Exception:
+            return datetime.min.replace(tzinfo=timezone.utc)
+
+    games.sort(key=_sort)
+    print(f"[INFO] WNBA: {len(games)} games in next 24h "
           f"(now {now_wat.strftime('%H:%M WAT')}).")
     return games
 
@@ -1566,6 +1813,8 @@ def ko_str(kickoff, reference_date=None):
 
 # ── Football card ──────────────────────────────────────────────────────────────
 def format_football_card(fix, pred):
+    gender = (fix.get("gender") or "").strip().lower()
+    gender_tag = " (Women)" if gender == "women" else ""
     w_e      = {"home": "🏠", "draw": "🤝", "away": "✈️"}.get(pred["winner"], "❓")
     btts_e   = "✅" if pred["btts"] == "Yes" else "❌"
     ou_e     = "⬆️" if pred["over_under"] == "Over 2.5" else "⬇️"
@@ -1584,7 +1833,7 @@ def format_football_card(fix, pred):
     venue = fix.get("venue", "TBC")
 
     return f"""
-⚽ *FOOTBALL — {fix['league']}*
+⚽ *FOOTBALL{gender_tag} — {fix['league']}*
 🆚 *{fix['home_team']}* vs *{fix['away_team']}*
 ⏰ `{ko_str(fix['kickoff'])}` 📍 _{venue}_{note_line}
 
@@ -1715,8 +1964,9 @@ def format_sport_summary(sport_emoji, sport_name, results, date_str):
         if fix["sport"] == "football":
             ou   = pred.get("over_under", "")
             btts = pred.get("btts", "")
+            gtag = " (Women)" if (fix.get("gender") or "").lower() == "women" else ""
             lines.append(
-                f"{g} *{fix['home_team']}* vs *{fix['away_team']}*\n"
+                f"{g} *{fix['home_team']}* vs *{fix['away_team']}*{gtag}\n"
                 f"   {w_e} `{label}` ({conf}%) | "
                 f"{'⬆️' if 'Over' in ou else '⬇️'}{ou} | BTTS:{btts} | ⏰`{ko}`\n"
             )
