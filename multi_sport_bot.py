@@ -90,6 +90,13 @@ TENNIS_KEYS = [
     ).split(",") if k.strip()
 ]
 
+# RapidAPI Tennis (ATP/WTA/ITF)
+RAPIDAPI_TENNIS_KEY = os.getenv("RAPIDAPI_TENNIS_KEY", "").strip()
+RAPIDAPI_TENNIS_HOST = os.getenv("RAPIDAPI_TENNIS_HOST", "tennis-api-atp-wta-itf.p.rapidapi.com").strip()
+TENNIS_PROVIDER = os.getenv("TENNIS_PROVIDER", "rapidapi").strip().lower()
+if not TENNIS_PROVIDER:
+    TENNIS_PROVIDER = "rapidapi"
+
 # ─── ROTATING CLIENTS (LAZY) ──────────────────────────────────────────────────
 # Important for GitHub Actions: jobs may run a single sport without other API keys.
 # So we must not require unrelated keys just by importing this module.
@@ -200,8 +207,13 @@ def validate_config(sport: str | None = None):
         errors.append("  ❌ FOOTBALL_API_KEYS is missing")
     if req_nba and not BALLDONTLIE_KEYS:
         errors.append("  ❌ BALLDONTLIE_KEYS is missing")
-    if req_tennis and not TENNIS_KEYS:
-        errors.append("  ❌ TENNIS_API_KEYS is missing")
+    if req_tennis:
+        if TENNIS_PROVIDER == "rapidapi":
+            if not RAPIDAPI_TENNIS_KEY:
+                errors.append("  ❌ RAPIDAPI_TENNIS_KEY is missing")
+        else:
+            if not TENNIS_KEYS:
+                errors.append("  ❌ TENNIS_API_KEYS is missing")
     if not TELEGRAM_BOT_TOKEN:
         errors.append("  ❌ TELEGRAM_BOT_TOKEN is missing")
     if not TELEGRAM_CHAT_ID:
@@ -215,6 +227,8 @@ def validate_config(sport: str | None = None):
           f"({len(FOOTBALL_KEYS)} football key(s), "
           f"{len(BALLDONTLIE_KEYS)} NBA key(s), "
           f"{len(TENNIS_KEYS)} tennis key(s))")
+    if req_tennis:
+        print(f"[INFO] Tennis provider: {TENNIS_PROVIDER}")
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -850,6 +864,16 @@ ESPN_HEADERS = {
 _nba_stats_cache = {}    # keyed by team abbreviation e.g. "BOS"
 _nba_bdl_id_map  = {}    # BallDontLie team_id -> abbreviation
 _wnba_stats_cache = {}   # keyed by team abbreviation e.g. "NYL"
+
+# RapidAPI tennis caches
+_rapidapi_rankings_cache = {}   # {tour: [rows]}
+_rapidapi_rankings_failed = set()
+_rapidapi_player_cache = {}     # {player_id: stats}
+_rapidapi_last_status = {}      # {path: status}
+_rapidapi_rankings_rate_limited = False
+_rapidapi_disable_rankings = False
+_rapidapi_disable_player_info = False
+_rapidapi_known_ranks = {}      # {"id:123" or "name:foo bar": rank}
 
 # Hardcoded BallDontLie v1 team_id → abbreviation (IDs never change)
 _BDL_ID_TO_ABBREV = {
@@ -1526,7 +1550,11 @@ def _rank_from_name(player_name):
     return 999
 
 
-def fetch_tennis_player_stats(player_key, surface="hard", player_name=""):
+def fetch_tennis_player_stats(player_key, surface="hard", player_name="", known_rank=None):
+    if TENNIS_PROVIDER == "rapidapi":
+        return fetch_tennis_player_stats_rapidapi(
+            player_key, surface=surface, player_name=player_name, known_rank=known_rank
+        )
     """
     Fetch player stats. If player_key is empty (free tier), falls back to
     name-based ranking lookup from embedded ATP/WTA tables.
@@ -1633,7 +1661,142 @@ def _call_tennis_api(params):
     return []
 
 
+def _call_rapidapi_tennis(path, params=None):
+    if not RAPIDAPI_TENNIS_KEY or not RAPIDAPI_TENNIS_HOST:
+        print("[WARN] RAPIDAPI_TENNIS_KEY/HOST missing — cannot call RapidAPI tennis.")
+        return None
+    url = f"https://{RAPIDAPI_TENNIS_HOST}{path}"
+    headers = {
+        "x-rapidapi-key": RAPIDAPI_TENNIS_KEY,
+        "x-rapidapi-host": RAPIDAPI_TENNIS_HOST,
+    }
+    try:
+        r = _http.get(url, headers=headers, params=params or {}, timeout=12)
+        _rapidapi_last_status[path] = r.status_code
+        if r.status_code != 200:
+            print(f"[WARN] RapidAPI tennis HTTP {r.status_code} for {path}")
+            return None
+        return r.json()
+    except Exception as e:
+        print(f"[WARN] RapidAPI tennis error: {e}")
+        return None
+
+
+def _rapidapi_rankings_candidates(tour: str):
+    tour = (tour or "").lower()
+    custom = os.getenv("RAPIDAPI_TENNIS_RANKINGS_PATH", "").strip()
+    custom_tour = os.getenv(f"RAPIDAPI_TENNIS_RANKINGS_PATH_{tour.upper()}", "").strip()
+    if custom_tour:
+        return [custom_tour]
+    if custom:
+        return [custom.format(tour=tour)]
+    return [
+        f"/tennis/v2/{tour}/rankings/singles",
+        f"/tennis/v2/{tour}/rankings",
+        f"/tennis/v2/{tour}/singlesRanking",
+        f"/tennis/v2/{tour}/ranking/singles",
+        f"/tennis/v2/rankings/{tour}/singles",
+        f"/tennis/v2/{tour}/rankings/singlesRanking",
+        f"/tennis/v2/{tour}/rankings/singles-ranking",
+        f"/tennis/v2/{tour}/rankings/singlesRankings",
+        f"/tennis/v2/{tour}/rankings/singles-ranking/",
+        f"/tennis/v2/rankings/singles/{tour}",
+    ]
+
+
+def _load_rapidapi_rankings(tour: str):
+    global _rapidapi_disable_rankings, _rapidapi_rankings_rate_limited
+    tour = (tour or "").lower()
+    if _rapidapi_disable_rankings:
+        return []
+    if os.getenv("RAPIDAPI_TENNIS_DISABLE_RANKINGS", "").strip().lower() in ("1", "true", "yes"):
+        _rapidapi_disable_rankings = True
+        return []
+    if _rapidapi_rankings_rate_limited:
+        return []
+    if tour in _rapidapi_rankings_cache:
+        return _rapidapi_rankings_cache[tour]
+    if tour in _rapidapi_rankings_failed:
+        return []
+
+    any_403_404 = False
+    for path in _rapidapi_rankings_candidates(tour):
+        data = _call_rapidapi_tennis(path)
+        if not data:
+            status = _rapidapi_last_status.get(path)
+            if status == 429:
+                _rapidapi_rankings_rate_limited = True
+                break
+            if status in (403, 404):
+                any_403_404 = True
+            continue
+        if isinstance(data, dict):
+            for k in ("data", "result", "results", "rankings", "players"):
+                v = data.get(k)
+                if isinstance(v, list) and v:
+                    _rapidapi_rankings_cache[tour] = v
+                    return v
+        if isinstance(data, list) and data:
+            _rapidapi_rankings_cache[tour] = data
+            return data
+
+    if any_403_404:
+        _rapidapi_disable_rankings = True
+        _rapidapi_rankings_failed.add(tour)
+    else:
+        _rapidapi_rankings_failed.add(tour)
+    return []
+
+
+def _rapidapi_player_info_candidates(tour: str, player_id: str):
+    tour = (tour or "").lower()
+    pid = str(player_id)
+    custom = os.getenv("RAPIDAPI_TENNIS_PLAYER_PATH", "").strip()
+    custom_tour = os.getenv(f"RAPIDAPI_TENNIS_PLAYER_PATH_{tour.upper()}", "").strip()
+    if custom_tour:
+        return [custom_tour.format(tour=tour, id=pid)]
+    if custom:
+        return [custom.format(tour=tour, id=pid)]
+    return [
+        f"/tennis/v2/{tour}/player/{pid}",
+        f"/tennis/v2/{tour}/players/{pid}",
+        f"/tennis/v2/{tour}/player/info/{pid}",
+        f"/tennis/v2/player/{pid}",
+        f"/tennis/v2/players/{pid}",
+    ]
+
+
+def _load_rapidapi_player_info(tour: str, player_id: str):
+    global _rapidapi_disable_player_info
+    if not player_id:
+        return {}
+    pid = str(player_id)
+    if pid in _rapidapi_player_cache:
+        return _rapidapi_player_cache[pid]
+    if _rapidapi_disable_player_info:
+        _rapidapi_player_cache[pid] = {}
+        return {}
+    any_403_404 = False
+    for path in _rapidapi_player_info_candidates(tour, pid):
+        data = _call_rapidapi_tennis(path)
+        if not data:
+            status = _rapidapi_last_status.get(path)
+            if status in (403, 404):
+                any_403_404 = True
+            continue
+        # Normalize to dict
+        if isinstance(data, dict):
+            _rapidapi_player_cache[pid] = data
+            return data
+    if any_403_404:
+        _rapidapi_disable_player_info = True
+    _rapidapi_player_cache[pid] = {}
+    return {}
+
+
 def fetch_tennis_fixtures():
+    if TENNIS_PROVIDER == "rapidapi":
+        return fetch_tennis_fixtures_rapidapi()
     wat_today = datetime.now(WAT_OFFSET).date()
     window_end_wat = _wat_window_end_for_today(wat_today)
     today = wat_today.strftime("%Y-%m-%d")  # WAT date
@@ -1716,6 +1879,14 @@ def fetch_tennis_fixtures():
         return players
 
     yesterday_players = _extract_players(raw_yesterday)
+    if rate_limited_any:
+        any_raw = any(raw_today_by_tour.values()) or any(raw_tomorrow_by_tour.values())
+        if not any_raw:
+            print("[WARN] RapidAPI tennis rate-limited (429) â€” no fixtures returned.")
+    if rate_limited_any:
+        any_raw = any(raw_today_by_tour.values()) or any(raw_tomorrow_by_tour.values())
+        if not any_raw:
+            print("[WARN] RapidAPI tennis rate-limited (429) â€” no fixtures returned.")
 
     for g in raw_data:
         gid = g.get("event_key")
@@ -1791,6 +1962,444 @@ def fetch_tennis_fixtures():
 
     print(f"[INFO] Tennis: {len(matches)} qualifying matches today.")
     return matches
+
+
+def fetch_tennis_fixtures_rapidapi():
+    """
+    RapidAPI Tennis API (ATP/WTA/ITF). Best-effort parsing.
+    """
+    wat_today = datetime.now(WAT_OFFSET).date()
+    window_end_wat = _wat_window_end_for_today(wat_today)
+    today = wat_today.strftime("%Y-%m-%d")
+    tomorrow = (wat_today + timedelta(days=1)).strftime("%Y-%m-%d")
+    yesterday = (wat_today - timedelta(days=1)).strftime("%Y-%m-%d")
+    # Match legacy api-tennis behavior: default to ATP/WTA only (ITF excluded).
+    tours = [t.strip().lower() for t in os.getenv("RAPIDAPI_TENNIS_TOURS", "atp,wta").split(",") if t.strip()]
+    if not tours:
+        tours = ["atp", "wta", "itf"]
+
+    def _qualifies(t_lower: str) -> bool:
+        if any(kw in t_lower for kw in ["itf", "utr", "futures", "junior"]):
+            return False
+        if not any(kw in t_lower for kw in ["atp", "wta", "grand slam", "masters", "challenger",
+                                            "miami", "indian wells", "roland", "wimbledon",
+                                            "us open", "australian", "french open",
+                                            "500", "250", "1000"]):
+            return False
+        return True
+
+    def _as_list(obj):
+        if isinstance(obj, list):
+            return obj
+        if isinstance(obj, dict):
+            for k in ("data", "result", "results", "fixtures", "events", "matches"):
+                v = obj.get(k)
+                if isinstance(v, list):
+                    return v
+        return []
+
+    def _get(d, keys, default=None):
+        for k in keys:
+            if isinstance(d, dict) and k in d and d[k] is not None:
+                return d[k]
+        return default
+
+    def _extract_name(v):
+        if isinstance(v, dict):
+            return v.get("name") or v.get("player") or v.get("fullname") or v.get("full_name")
+        return v
+
+    def _extract_id(v):
+        if isinstance(v, dict):
+            return v.get("id") or v.get("player_id")
+        return None
+
+    def _extract_rank(v):
+        if isinstance(v, dict):
+            for k in ("rank", "ranking", "position", "currentRank", "singlesRank"):
+                if v.get(k) is not None:
+                    try:
+                        return int(v.get(k))
+                    except Exception:
+                        pass
+        return None
+
+    def _build_kickoff(item):
+        def _parse_offset(tz):
+            if not tz:
+                return None
+            t = str(tz).strip().upper()
+            # IANA timezone (e.g., Europe/Paris)
+            if "/" in t:
+                return t
+            # Common abbreviations
+            if t in ("WAT",):
+                return 1
+            if t in ("UTC", "GMT"):
+                return 0
+            if t in ("CET", "BST", "WEST"):
+                return 1
+            if t in ("CEST", "EET", "EEST"):
+                return 2
+            if t in ("ET", "EST"):
+                return -5
+            if t in ("EDT",):
+                return -4
+            # UTC+X or GMT-3
+            if t.startswith("UTC") or t.startswith("GMT"):
+                t = t.replace("UTC", "").replace("GMT", "")
+            if t.startswith("+") or t.startswith("-"):
+                try:
+                    if ":" in t:
+                        sign = 1 if t.startswith("+") else -1
+                        hh, mm = t[1:].split(":", 1)
+                        return sign * (int(hh) + int(mm) / 60)
+                    return int(t)
+                except Exception:
+                    return None
+            return None
+
+        # Prefer explicit timestamps
+        for k in ("timestamp", "startTimestamp", "utcTimestamp"):
+            v = _get(item, [k])
+            if v is None:
+                continue
+            try:
+                ts = int(v)
+                if ts > 10_000_000_000:  # ms
+                    ts = ts / 1000.0
+                return datetime.fromtimestamp(ts, tz=timezone.utc).isoformat()
+            except Exception:
+                pass
+
+        # Prefer explicit UTC date/time fields if present
+        dt_utc = _get(item, ["utcDate", "dateUTC", "date_utc"])
+        tm_utc = _get(item, ["utcTime", "timeUTC", "time_utc"])
+        if isinstance(dt_utc, str):
+            if "T" in dt_utc:
+                return dt_utc if dt_utc.endswith("Z") or "+" in dt_utc else dt_utc + "+00:00"
+            if tm_utc:
+                return f"{dt_utc}T{tm_utc}:00+00:00"
+
+        dt = _get(item, ["date", "start_date", "startTime", "start_time", "datetime", "start_datetime"])
+        tm = _get(item, ["time", "start_time", "startTime", "timeGMT", "gmtTime"])
+
+        if isinstance(dt, str) and "T" in dt:
+            return dt if dt.endswith("Z") or "+" in dt else dt + "+00:00"
+
+        # If timezone provided, adjust to UTC
+        tz = _get(item, ["timezone", "timeZone", "tz", "time_zone"])
+        offset = _parse_offset(tz)
+        if isinstance(dt, str) and tm and offset is not None:
+            try:
+                base = datetime.fromisoformat(f"{dt}T{tm}:00")
+                if isinstance(offset, str) and "/" in offset:
+                    try:
+                        from zoneinfo import ZoneInfo
+                        z = ZoneInfo(offset)
+                        utc_dt = base.replace(tzinfo=z).astimezone(timezone.utc)
+                        return utc_dt.isoformat()
+                    except Exception:
+                        pass
+                utc_dt = base - timedelta(hours=offset)
+                return utc_dt.replace(tzinfo=timezone.utc).isoformat()
+            except Exception:
+                pass
+
+        if isinstance(dt, str) and tm:
+            return f"{dt}T{tm}:00+00:00"
+        if isinstance(dt, str):
+            return f"{dt}T00:00:00+00:00"
+        return ""
+
+    def _fetch_date(tour, date_str):
+        # Example path: /tennis/v2/atp/fixtures/2024-02-07
+        path = f"/tennis/v2/{tour}/fixtures/{date_str}"
+        data = _call_rapidapi_tennis(path) or {}
+        status = _rapidapi_last_status.get(path)
+        return data, status
+
+    def _extract_players(raw_list, require_qualify=True):
+        players = set()
+        for g in raw_list:
+            tournament = str(_get(g, ["tournament", "tournament_name", "tournamentName"], "") or "")
+            ev_type = str(_get(g, ["event_type_type", "type", "category", "tour"], "") or "")
+            t_lower = f"{tournament} {ev_type}".lower()
+            if require_qualify and not _qualifies(t_lower):
+                continue
+            home_p = _extract_name(_get(g, ["player1", "home", "player_home", "homePlayer", "player_1"], "Player 1"))
+            away_p = _extract_name(_get(g, ["player2", "away", "player_away", "awayPlayer", "player_2"], "Player 2"))
+            players.add(_normalize_player_name(home_p))
+            players.add(_normalize_player_name(away_p))
+        return players
+
+    # Yesterday list for back-to-back (skip if rate-limited)
+    raw_yesterday = []
+    rate_limited_any = False
+    raw_today_by_tour = {}
+    raw_tomorrow_by_tour = {}
+    b2b_days = int(os.getenv("RAPIDAPI_TENNIS_B2B_DAYS", "1") or "1")
+    if b2b_days < 1:
+        b2b_days = 1
+    for tour in tours:
+        data_today, status_today = _fetch_date(tour, today)
+        if status_today == 429:
+            rate_limited_any = True
+            raw_today_by_tour[tour] = []
+            raw_tomorrow_by_tour[tour] = []
+            continue
+        raw_today_list = _as_list(data_today)
+        raw_today_by_tour[tour] = raw_today_list
+
+        # Fetch tomorrow for early-next-day window (if not rate-limited for this tour)
+        data_tom, status_tom = _fetch_date(tour, tomorrow)
+        if status_tom == 429:
+            rate_limited_any = True
+            raw_tomorrow_by_tour[tour] = []
+        else:
+            raw_tomorrow_by_tour[tour] = _as_list(data_tom)
+
+        # Fetch previous days for back-to-back only if today has matches
+        if raw_today_list:
+            for d in range(1, b2b_days + 1):
+                day_str = (wat_today - timedelta(days=d)).strftime("%Y-%m-%d")
+                data_y, status_y = _fetch_date(tour, day_str)
+                if status_y == 429:
+                    rate_limited_any = True
+                    break
+                raw_yesterday += _as_list(data_y)
+    yesterday_players = _extract_players(raw_yesterday, require_qualify=False)
+
+    fixtures = []
+    seen_ids = set()
+
+    def _gender_from_text(text: str) -> str:
+        t = (text or "").lower()
+        if "mixed" in t:
+            return "mixed"
+        if "wta" in t or "women" in t:
+            return "women"
+        if "atp" in t or "challenger" in t or "men" in t:
+            return "men"
+        return "unknown"
+
+    def _event_format(ev_type: str, tournament: str) -> str:
+        t = f"{ev_type or ''} {tournament or ''}".lower()
+        if "mixed" in t and "double" in t:
+            return "mixed_doubles"
+        if "double" in t:
+            return "doubles"
+        if "single" in t:
+            return "singles"
+        return "unknown"
+
+    def _handle_list(raw_list, tour):
+        nonlocal fixtures, seen_ids
+        for g in raw_list:
+            gid = _get(g, ["id", "event_id", "fixture_id", "match_id"]) or str(_get(g, ["slug"], ""))
+            if not gid:
+                continue
+            if gid in seen_ids:
+                continue
+            seen_ids.add(gid)
+
+            tournament_id = _get(g, ["tournamentId", "tournament_id"])
+            tournament = str(_get(g, ["tournament", "tournament_name", "tournamentName"], "") or "")
+            ev_type = str(_get(g, ["event_type_type", "type", "category", "tour"], "") or "") or tour
+            if not tournament and tournament_id:
+                tournament = f"Tournament {tournament_id}"
+            t_lower = f"{tournament} {ev_type}".lower()
+            if not _qualifies(t_lower):
+                continue
+
+            home_raw = _get(g, ["player1", "home", "player_home", "homePlayer", "player_1"], None)
+            away_raw = _get(g, ["player2", "away", "player_away", "awayPlayer", "player_2"], None)
+            home_p = _extract_name(home_raw or "Player 1")
+            away_p = _extract_name(away_raw or "Player 2")
+            home_id = _extract_id(home_raw)
+            away_id = _extract_id(away_raw)
+            home_rank = _extract_rank(home_raw)
+            away_rank = _extract_rank(away_raw)
+            if home_rank is None:
+                home_rank = _get(g, ["player1_rank", "player1Rank", "home_rank", "homeRank", "rank1", "rank_home"])
+            if away_rank is None:
+                away_rank = _get(g, ["player2_rank", "player2Rank", "away_rank", "awayRank", "rank2", "rank_away"])
+            try:
+                home_rank = int(home_rank) if home_rank is not None else None
+            except Exception:
+                home_rank = None
+            try:
+                away_rank = int(away_rank) if away_rank is not None else None
+            except Exception:
+                away_rank = None
+
+            kickoff = _build_kickoff(g)
+            # Optional manual offset (hours) to correct provider timezone issues
+            try:
+                off = os.getenv("RAPIDAPI_TENNIS_TIME_OFFSET_HOURS", "").strip()
+                if kickoff and off:
+                    delta = float(off)
+                    dt_fix = datetime.fromisoformat(str(kickoff).replace("Z", "+00:00"))
+                    kickoff = (dt_fix + timedelta(hours=delta)).isoformat()
+            except Exception:
+                pass
+            if os.getenv("RAPIDAPI_TENNIS_DEBUG", "").strip().lower() in ("1", "true", "yes"):
+                dbg = {
+                    "id": gid,
+                    "date": _get(g, ["date", "start_date", "dateUTC", "utcDate"]),
+                    "time": _get(g, ["time", "start_time", "startTime", "timeGMT", "gmtTime", "utcTime"]),
+                    "timezone": _get(g, ["timezone", "timeZone", "tz", "time_zone"]),
+                    "timestamp": _get(g, ["timestamp", "startTimestamp", "utcTimestamp"]),
+                    "kickoff": kickoff,
+                }
+                print(f"[DEBUG] RapidAPI fixture time: {dbg}")
+            if kickoff:
+                try:
+                    dt_wat = datetime.fromisoformat(str(kickoff).replace("Z", "+00:00")).astimezone(WAT_OFFSET)
+                    if dt_wat < datetime(wat_today.year, wat_today.month, wat_today.day, 0, 0, tzinfo=WAT_OFFSET) or dt_wat >= window_end_wat:
+                        continue
+                except Exception:
+                    pass
+
+            tournament_full = tournament
+            if ev_type and ev_type.lower() not in tournament.lower():
+                tournament_full = f"{tournament} ({ev_type})" if tournament else ev_type
+
+            gender = _gender_from_text(ev_type) if ev_type else _gender_from_text(tournament)
+            fmt = _event_format(ev_type, tournament)
+            b2b_home = _normalize_player_name(home_p) in yesterday_players
+            b2b_away = _normalize_player_name(away_p) in yesterday_players
+
+            # Cache known ranks from fixtures (if provided)
+            if home_rank:
+                if home_id:
+                    _rapidapi_known_ranks[f"id:{home_id}"] = home_rank
+                _rapidapi_known_ranks[f"name:{_normalize_player_name(home_p)}"] = home_rank
+            if away_rank:
+                if away_id:
+                    _rapidapi_known_ranks[f"id:{away_id}"] = away_rank
+                _rapidapi_known_ranks[f"name:{_normalize_player_name(away_p)}"] = away_rank
+
+            fixtures.append({
+                "sport":           "tennis",
+                "fixture_id":      str(gid),
+                "league":          tournament_full,
+                "event_type":      ev_type,
+                "gender":          gender,
+                "match_format":    fmt,
+                "home_team":       home_p,
+                "away_team":       away_p,
+                "home_player_key": str(home_id or ""),
+                "away_player_key": str(away_id or ""),
+                "home_rank":       home_rank,
+                "away_rank":       away_rank,
+                "kickoff":         kickoff,
+                "tournament":      tournament_full,
+                "venue":           "TBC",
+                "back_to_back":    bool(b2b_home or b2b_away),
+                "b2b_home":        bool(b2b_home),
+                "b2b_away":        bool(b2b_away),
+            })
+
+    for tour, lst in raw_today_by_tour.items():
+        _handle_list(lst, tour)
+    for tour, lst in raw_tomorrow_by_tour.items():
+        _handle_list(lst, tour)
+
+    print(f"[INFO] Tennis (RapidAPI): {len(fixtures)} qualifying matches today.")
+    return fixtures
+
+
+def fetch_tennis_player_stats_rapidapi(player_key, surface="hard", player_name="", known_rank=None):
+    """
+    Best-effort mapping for RapidAPI Tennis API.
+    Uses singlesRanking for rank and falls back to name-based rank lookup if needed.
+    """
+    cache_key = f"rapidapi:{player_key or player_name}"
+    if cache_key in _tennis_player_cache:
+        return _tennis_player_cache[cache_key]
+
+    stats = {}
+
+    rank = 999
+    if known_rank:
+        try:
+            rank = int(known_rank)
+        except Exception:
+            rank = 999
+
+    if rank >= 999:
+        if player_key:
+            cached = _rapidapi_known_ranks.get(f"id:{player_key}")
+            if cached:
+                rank = int(cached)
+        if rank >= 999 and player_name:
+            cached = _rapidapi_known_ranks.get(f"name:{_normalize_player_name(player_name)}")
+            if cached:
+                rank = int(cached)
+
+    if rank >= 999 and player_name:
+        pname = _normalize_player_name(player_name)
+        for tour in ("atp", "wta"):
+            for row in _load_rapidapi_rankings(tour):
+                name = row.get("name") or row.get("player") or row.get("playerName")
+                if isinstance(name, dict):
+                    name = name.get("name") or name.get("full_name") or name.get("displayName")
+                if not name:
+                    continue
+                if _normalize_player_name(name) == pname:
+                    r = row.get("rank") or row.get("position")
+                    try:
+                        rank = int(r)
+                    except Exception:
+                        pass
+                    break
+            if rank < 999:
+                break
+
+    # Try player info endpoint if we still don't have a rank and have player_id
+    if rank >= 999 and player_key:
+        for tour in ("atp", "wta", "itf"):
+            info = _load_rapidapi_player_info(tour, player_key)
+            if not info:
+                continue
+            # Try to extract a rank field
+            for k in ("rank", "ranking", "position", "currentRank", "singlesRank"):
+                v = info.get(k)
+                if v is None and isinstance(info.get("data"), dict):
+                    v = info["data"].get(k)
+                if v is None and isinstance(info.get("player"), dict):
+                    v = info["player"].get(k)
+                if v is not None:
+                    try:
+                        rank = int(v)
+                        break
+                    except Exception:
+                        pass
+            if rank < 999:
+                break
+
+    if rank >= 999 and player_name:
+        # Fallback to embedded ATP/WTA tables
+        rank = _rank_from_name(player_name)
+
+    if rank < 999:
+        win_pct = max(0.45, min(0.82, 0.82 - (rank - 1) * 0.003))
+        stats = {
+            "rank": rank,
+            "recent_wins": int(win_pct * 10),
+            "recent_losses": int((1-win_pct) * 10),
+            "serve_win_pct": round(0.72 + (50-rank)*0.001, 3) if rank <= 50 else round(0.68 - (rank-50)*0.0005, 3),
+            "first_serve_pct": 0.62,
+            "break_pts_saved_pct": 0.63,
+            "surface_win_pct": round(win_pct, 3),
+            "days_since_last_match": 1,
+        }
+    else:
+        print(f"[WARN] RapidAPI Tennis: no rank found for '{player_name}'")
+
+    _tennis_player_cache[cache_key] = stats
+    return stats
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -2221,10 +2830,12 @@ def run_predictions():
         surface    = _TP()._detect_surface(fix.get("tournament", ""))
         # Pass both player_key AND player_name — name used as fallback when key is empty
         home_stats = fetch_tennis_player_stats(
-            fix.get("home_player_key", ""), surface, player_name=fix.get("home_team", "")
+            fix.get("home_player_key", ""), surface, player_name=fix.get("home_team", ""),
+            known_rank=fix.get("home_rank")
         )
         away_stats = fetch_tennis_player_stats(
-            fix.get("away_player_key", ""), surface, player_name=fix.get("away_team", "")
+            fix.get("away_player_key", ""), surface, player_name=fix.get("away_team", ""),
+            known_rank=fix.get("away_rank")
         )
         pred = t_pred.predict(fix, home_stats=home_stats, away_stats=away_stats)
         # Apply news sentiment adjustment

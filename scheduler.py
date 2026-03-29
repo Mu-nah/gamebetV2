@@ -306,11 +306,13 @@ def run_tennis(dedupe: bool = True):
         surface    = t_pred._detect_surface(fix.get("tournament", ""))
         home_stats = fetch_tennis_player_stats(
             fix.get("home_player_key", ""), surface,
-            player_name=fix.get("home_team", "")
+            player_name=fix.get("home_team", ""),
+            known_rank=fix.get("home_rank")
         )
         away_stats = fetch_tennis_player_stats(
             fix.get("away_player_key", ""), surface,
-            player_name=fix.get("away_team", "")
+            player_name=fix.get("away_team", ""),
+            known_rank=fix.get("away_rank")
         )
         # Get news sentiment for dynamic adjustment
         sentiment_home = get_team_sentiment(fix["home_team"], "tennis")["score"]
