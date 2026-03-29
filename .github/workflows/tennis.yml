@@ -56,8 +56,6 @@ jobs:
           TENNIS_PROVIDER: ${{ secrets.TENNIS_PROVIDER }}
           RAPIDAPI_TENNIS_KEY: ${{ secrets.RAPIDAPI_TENNIS_KEY }}
           RAPIDAPI_TENNIS_HOST: ${{ secrets.RAPIDAPI_TENNIS_HOST }}
-          # Legacy api-tennis (optional)
-          TENNIS_API_KEYS: ${{ secrets.TENNIS_API_KEYS }}
           REQUESTS_TRUST_ENV: "0"
           HF_HOME: ${{ github.workspace }}/.hf_cache
           TRANSFORMERS_CACHE: ${{ github.workspace }}/.hf_cache

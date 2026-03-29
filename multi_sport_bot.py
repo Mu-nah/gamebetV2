@@ -208,12 +208,14 @@ def validate_config(sport: str | None = None):
     if req_nba and not BALLDONTLIE_KEYS:
         errors.append("  ❌ BALLDONTLIE_KEYS is missing")
     if req_tennis:
-        if TENNIS_PROVIDER == "rapidapi":
-            if not RAPIDAPI_TENNIS_KEY:
-                errors.append("  ❌ RAPIDAPI_TENNIS_KEY is missing")
-        else:
+        provider = (TENNIS_PROVIDER or "").strip().lower()
+        if provider == "api-tennis":
             if not TENNIS_KEYS:
                 errors.append("  ❌ TENNIS_API_KEYS is missing")
+        else:
+            # Default to RapidAPI (comment out api-tennis unless explicitly selected)
+            if not RAPIDAPI_TENNIS_KEY:
+                errors.append("  ❌ RAPIDAPI_TENNIS_KEY is missing")
     if not TELEGRAM_BOT_TOKEN:
         errors.append("  ❌ TELEGRAM_BOT_TOKEN is missing")
     if not TELEGRAM_CHAT_ID:
