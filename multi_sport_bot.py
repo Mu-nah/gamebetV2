@@ -234,6 +234,9 @@ def validate_config(sport: str | None = None):
           f"{len(TENNIS_KEYS)} tennis key(s))")
     if req_tennis:
         print(f"[INFO] Tennis provider: {TENNIS_PROVIDER}")
+        if (TENNIS_PROVIDER or "").strip().lower() != "api-tennis":
+            print(f"[INFO] RapidAPI tennis keys loaded: {len(RAPIDAPI_TENNIS_KEYS)}")
+            print(f"[INFO] RapidAPI tennis host: {RAPIDAPI_TENNIS_HOST}")
 
 
 # â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
