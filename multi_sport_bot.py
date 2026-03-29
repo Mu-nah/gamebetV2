@@ -2155,6 +2155,7 @@ def fetch_tennis_fixtures_rapidapi():
     rate_limited_any = False
     raw_today_by_tour = {}
     raw_tomorrow_by_tour = {}
+    raw_meta = {}
     b2b_days = int(os.getenv("RAPIDAPI_TENNIS_B2B_DAYS", "1") or "1")
     if b2b_days < 1:
         b2b_days = 1
@@ -2164,17 +2165,23 @@ def fetch_tennis_fixtures_rapidapi():
             rate_limited_any = True
             raw_today_by_tour[tour] = []
             raw_tomorrow_by_tour[tour] = []
+            raw_meta[tour] = {"today_status": status_today, "today_len": 0}
             continue
         raw_today_list = _as_list(data_today)
         raw_today_by_tour[tour] = raw_today_list
+        raw_meta[tour] = {"today_status": status_today, "today_len": len(raw_today_list)}
 
         # Fetch tomorrow for early-next-day window (if not rate-limited for this tour)
         data_tom, status_tom = _fetch_date(tour, tomorrow)
         if status_tom == 429:
             rate_limited_any = True
             raw_tomorrow_by_tour[tour] = []
+            raw_meta[tour]["tomorrow_status"] = status_tom
+            raw_meta[tour]["tomorrow_len"] = 0
         else:
             raw_tomorrow_by_tour[tour] = _as_list(data_tom)
+            raw_meta[tour]["tomorrow_status"] = status_tom
+            raw_meta[tour]["tomorrow_len"] = len(raw_tomorrow_by_tour[tour])
 
         # Fetch previous days for back-to-back only if today has matches
         if raw_today_list:
@@ -2186,6 +2193,9 @@ def fetch_tennis_fixtures_rapidapi():
                     break
                 raw_yesterday += _as_list(data_y)
     yesterday_players = _extract_players(raw_yesterday, require_qualify=False)
+    if os.getenv("RAPIDAPI_TENNIS_DEBUG", "").strip().lower() in ("1", "true", "yes"):
+        for tour, meta in raw_meta.items():
+            print(f"[DEBUG] RapidAPI {tour} today: status={meta.get('today_status')} len={meta.get('today_len')} | tomorrow: status={meta.get('tomorrow_status')} len={meta.get('tomorrow_len')}")
 
     fixtures = []
     seen_ids = set()
@@ -2210,7 +2220,7 @@ def fetch_tennis_fixtures_rapidapi():
             return "singles"
         return "unknown"
 
-    def _handle_list(raw_list, tour):
+    def _handle_list(raw_list, tour, relax_filters=False):
         nonlocal fixtures, seen_ids
         for g in raw_list:
             gid = _get(g, ["id", "event_id", "fixture_id", "match_id"]) or str(_get(g, ["slug"], ""))
@@ -2226,7 +2236,7 @@ def fetch_tennis_fixtures_rapidapi():
             if not tournament and tournament_id:
                 tournament = f"Tournament {tournament_id}"
             t_lower = f"{tournament} {ev_type}".lower()
-            if not _qualifies(t_lower):
+            if not relax_filters and not _qualifies(t_lower):
                 continue
 
             home_raw = _get(g, ["player1", "home", "player_home", "homePlayer", "player_1"], None)
@@ -2319,9 +2329,18 @@ def fetch_tennis_fixtures_rapidapi():
             })
 
     for tour, lst in raw_today_by_tour.items():
+        before = len(fixtures)
         _handle_list(lst, tour)
+        added = len(fixtures) - before
+        if added == 0 and lst and tour in ("atp", "wta"):
+            # If everything got filtered out but API returned items, relax filters for ATP/WTA.
+            _handle_list(lst, tour, relax_filters=True)
     for tour, lst in raw_tomorrow_by_tour.items():
+        before = len(fixtures)
         _handle_list(lst, tour)
+        added = len(fixtures) - before
+        if added == 0 and lst and tour in ("atp", "wta"):
+            _handle_list(lst, tour, relax_filters=True)
 
     print(f"[INFO] Tennis (RapidAPI): {len(fixtures)} qualifying matches today.")
     return fixtures
