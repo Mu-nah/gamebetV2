@@ -99,6 +99,9 @@ RAPIDAPI_TENNIS_HOST = os.getenv("RAPIDAPI_TENNIS_HOST", "tennis-api-atp-wta-itf
 TENNIS_PROVIDER = os.getenv("TENNIS_PROVIDER", "rapidapi").strip().lower()
 if not TENNIS_PROVIDER:
     TENNIS_PROVIDER = "rapidapi"
+# Allow different providers for fixtures vs player stats
+TENNIS_FIXTURES_PROVIDER = os.getenv("TENNIS_FIXTURES_PROVIDER", TENNIS_PROVIDER).strip().lower()
+TENNIS_STATS_PROVIDER = os.getenv("TENNIS_STATS_PROVIDER", TENNIS_PROVIDER).strip().lower()
 
 # â”€â”€â”€ ROTATING CLIENTS (LAZY) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 # Important for GitHub Actions: jobs may run a single sport without other API keys.
@@ -211,14 +214,21 @@ def validate_config(sport: str | None = None):
     if req_nba and not BALLDONTLIE_KEYS:
         errors.append("  âŒ BALLDONTLIE_KEYS is missing")
     if req_tennis:
-        provider = (TENNIS_PROVIDER or "").strip().lower()
-        if provider == "api-tennis":
+        fix_provider = (TENNIS_FIXTURES_PROVIDER or "").strip().lower()
+        stats_provider = (TENNIS_STATS_PROVIDER or "").strip().lower()
+        if fix_provider == "api-tennis":
             if not TENNIS_KEYS:
-                errors.append("  âŒ TENNIS_API_KEYS is missing")
+                errors.append("  ❌ TENNIS_API_KEYS is missing")
         else:
-            # Default to RapidAPI (comment out api-tennis unless explicitly selected)
             if not RAPIDAPI_TENNIS_KEYS:
-                errors.append("  âŒ RAPIDAPI_TENNIS_KEY(S) is missing")
+                errors.append("  ❌ RAPIDAPI_TENNIS_KEY(S) is missing")
+        if stats_provider == "rapidapi":
+            if not RAPIDAPI_TENNIS_KEYS:
+                errors.append("  ❌ RAPIDAPI_TENNIS_KEY(S) is missing")
+        elif stats_provider == "api-tennis":
+            if not TENNIS_KEYS:
+                errors.append("  ❌ TENNIS_API_KEYS is missing")
+
     if not TELEGRAM_BOT_TOKEN:
         errors.append("  âŒ TELEGRAM_BOT_TOKEN is missing")
     if not TELEGRAM_CHAT_ID:
@@ -233,8 +243,9 @@ def validate_config(sport: str | None = None):
           f"{len(BALLDONTLIE_KEYS)} NBA key(s), "
           f"{len(TENNIS_KEYS)} tennis key(s))")
     if req_tennis:
-        print(f"[INFO] Tennis provider: {TENNIS_PROVIDER}")
-        if (TENNIS_PROVIDER or "").strip().lower() != "api-tennis":
+        print(f"[INFO] Tennis fixtures provider: {TENNIS_FIXTURES_PROVIDER}")
+        print(f"[INFO] Tennis stats provider: {TENNIS_STATS_PROVIDER}")
+        if (TENNIS_STATS_PROVIDER or "").strip().lower() == "rapidapi" or (TENNIS_FIXTURES_PROVIDER or "").strip().lower() == "rapidapi":
             print(f"[INFO] RapidAPI tennis keys loaded: {len(RAPIDAPI_TENNIS_KEYS)}")
             print(f"[INFO] RapidAPI tennis host: {RAPIDAPI_TENNIS_HOST}")
 
@@ -1560,7 +1571,7 @@ def _rank_from_name(player_name):
 
 
 def fetch_tennis_player_stats(player_key, surface="hard", player_name="", known_rank=None):
-    if TENNIS_PROVIDER == "rapidapi":
+    if (TENNIS_STATS_PROVIDER or "").strip().lower() == "rapidapi":
         return fetch_tennis_player_stats_rapidapi(
             player_key, surface=surface, player_name=player_name, known_rank=known_rank
         )
@@ -1812,7 +1823,7 @@ def _load_rapidapi_player_info(tour: str, player_id: str):
 
 
 def fetch_tennis_fixtures():
-    if TENNIS_PROVIDER == "rapidapi":
+    if (TENNIS_FIXTURES_PROVIDER or "").strip().lower() == "rapidapi":
         return fetch_tennis_fixtures_rapidapi()
     wat_today = datetime.now(WAT_OFFSET).date()
     window_end_wat = _wat_window_end_for_today(wat_today)
@@ -2911,5 +2922,7 @@ def run_predictions():
 
 if __name__ == "__main__":
     run_predictions()
+
+
 
 
