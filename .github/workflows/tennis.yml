@@ -55,6 +55,7 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TENNIS_PROVIDER: ${{ secrets.TENNIS_PROVIDER }}
           RAPIDAPI_TENNIS_KEY: ${{ secrets.RAPIDAPI_TENNIS_KEY }}
+          RAPIDAPI_TENNIS_KEYS: ${{ secrets.RAPIDAPI_TENNIS_KEYS }}
           RAPIDAPI_TENNIS_HOST: ${{ secrets.RAPIDAPI_TENNIS_HOST }}
           REQUESTS_TRUST_ENV: "0"
           HF_HOME: ${{ github.workspace }}/.hf_cache
