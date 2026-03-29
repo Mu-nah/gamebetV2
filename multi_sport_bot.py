@@ -31,7 +31,7 @@ from api_client           import RotatingClient
 # WAT = UTC+1
 WAT_OFFSET = timezone(timedelta(hours=1))
 # Include early next-day fixtures in today's slate up to this hour (WAT).
-# Example: 3 means include 00:00â€“02:59 WAT fixtures from tomorrow in "today".
+# Example: 3 means include 00:00�?"02:59 WAT fixtures from tomorrow in "today".
 EARLY_NEXT_DAY_CUTOFF_HOUR_WAT = int(os.getenv("EARLY_NEXT_DAY_CUTOFF_HOUR_WAT", "3") or "3")
 
 
@@ -54,17 +54,17 @@ try:
 except Exception:
     _http.trust_env = False
 
-# â”€â”€â”€ CONFIG â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# �"?�"?�"? CONFIG �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID   = os.getenv("TELEGRAM_CHAT_ID",   "")
 
-# â”€â”€â”€ API BASE URLS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# �"?�"?�"? API BASE URLS �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
 FOOTBALL_URL    = "https://v3.football.api-sports.io"
 FOOTBALL_DATA_URL = "https://api.football-data.org/v4"
 BALLDONTLIE_URL = "https://api.balldontlie.io/v1"
 API_TENNIS_URL  = "https://api.api-tennis.com/tennis/"
 
-# â”€â”€â”€ KEY POOLS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# �"?�"?�"? KEY POOLS �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
 # Separate multiple keys with commas in your .env file
 FOOTBALL_KEYS = [
     k.strip() for k in os.getenv(
@@ -90,7 +90,7 @@ TENNIS_KEYS = [
     ).split(",") if k.strip()
 ]
 
-# RapidAPI Tennis (ATP/WTA/ITF) â€” support multiple keys (comma-separated)
+# RapidAPI Tennis (ATP/WTA/ITF) �?" support multiple keys (comma-separated)
 _rapidapi_keys_raw = os.getenv("RAPIDAPI_TENNIS_KEYS", "").strip()
 if not _rapidapi_keys_raw:
     _rapidapi_keys_raw = os.getenv("RAPIDAPI_TENNIS_KEY", "").strip()
@@ -103,7 +103,7 @@ if not TENNIS_PROVIDER:
 TENNIS_FIXTURES_PROVIDER = os.getenv("TENNIS_FIXTURES_PROVIDER", TENNIS_PROVIDER).strip().lower()
 TENNIS_STATS_PROVIDER = os.getenv("TENNIS_STATS_PROVIDER", TENNIS_PROVIDER).strip().lower()
 
-# â”€â”€â”€ ROTATING CLIENTS (LAZY) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# �"?�"?�"? ROTATING CLIENTS (LAZY) �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
 # Important for GitHub Actions: jobs may run a single sport without other API keys.
 # So we must not require unrelated keys just by importing this module.
 football_client = None
@@ -141,14 +141,14 @@ def _get_nba_client():
     return nba_client
 
 
-# Tennis uses query-param auth (not header) â€” handled manually in fetcher
+# Tennis uses query-param auth (not header) �?" handled manually in fetcher
 FOOTBALL_API_KEY = FOOTBALL_KEYS[0] if FOOTBALL_KEYS else ""
 
-# â”€â”€â”€ FOOTBALL LEAGUES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# �"?�"?�"? FOOTBALL LEAGUES �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
 FOOTBALL_LEAGUES = {
     39:  ("Premier League",         -1),
     140: ("La Liga",                -1),
-    141: ("La Liga 2",              -1),   # Segunda DivisiÃ³n
+    141: ("La Liga 2",              -1),   # Segunda División
     135: ("Serie A",                -1),
     136: ("Serie B",                -1),   # Serie B Italy
     78:  ("Bundesliga",             -1),
@@ -201,7 +201,7 @@ VALUE_BET_THRESHOLD = 0.12
 BOOKMAKER_ID        = 6
 
 
-# â”€â”€â”€ VALIDATION â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# �"?�"?�"? VALIDATION �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
 def validate_config(sport: str | None = None):
     errors = []
     s = (sport or "all").strip().lower()
@@ -210,29 +210,29 @@ def validate_config(sport: str | None = None):
     req_tennis = s in ("all", "tennis")
 
     if req_football and not FOOTBALL_KEYS:
-        errors.append("  âŒ FOOTBALL_API_KEYS is missing")
+        errors.append("  �O FOOTBALL_API_KEYS is missing")
     if req_nba and not BALLDONTLIE_KEYS:
-        errors.append("  âŒ BALLDONTLIE_KEYS is missing")
+        errors.append("  �O BALLDONTLIE_KEYS is missing")
     if req_tennis:
         fix_provider = (TENNIS_FIXTURES_PROVIDER or "").strip().lower()
         stats_provider = (TENNIS_STATS_PROVIDER or "").strip().lower()
         if fix_provider == "api-tennis":
             if not TENNIS_KEYS:
-                errors.append("  ❌ TENNIS_API_KEYS is missing")
+                errors.append("  ? TENNIS_API_KEYS is missing")
         else:
             if not RAPIDAPI_TENNIS_KEYS:
-                errors.append("  ❌ RAPIDAPI_TENNIS_KEY(S) is missing")
+                errors.append("  ? RAPIDAPI_TENNIS_KEY(S) is missing")
         if stats_provider == "rapidapi":
             if not RAPIDAPI_TENNIS_KEYS:
-                errors.append("  ❌ RAPIDAPI_TENNIS_KEY(S) is missing")
+                errors.append("  ? RAPIDAPI_TENNIS_KEY(S) is missing")
         elif stats_provider == "api-tennis":
             if not TENNIS_KEYS:
-                errors.append("  ❌ TENNIS_API_KEYS is missing")
+                errors.append("  ? TENNIS_API_KEYS is missing")
 
     if not TELEGRAM_BOT_TOKEN:
-        errors.append("  âŒ TELEGRAM_BOT_TOKEN is missing")
+        errors.append("  �O TELEGRAM_BOT_TOKEN is missing")
     if not TELEGRAM_CHAT_ID:
-        errors.append("  âŒ TELEGRAM_CHAT_ID is missing")
+        errors.append("  �O TELEGRAM_CHAT_ID is missing")
     if errors:
         print("\n[CONFIG ERROR] Fix the following in your .env file:")
         for e in errors:
@@ -250,9 +250,9 @@ def validate_config(sport: str | None = None):
             print(f"[INFO] RapidAPI tennis host: {RAPIDAPI_TENNIS_HOST}")
 
 
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+# �.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.�
 # FOOTBALL FETCHERS
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+# �.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.�
 ESPN_SOCCER_URL = "https://site.api.espn.com/apis/site/v2/sports/soccer"
 # Cache ESPN soccer *team* stats, pulled from the per-team endpoint.
 # ESPN's `/standings` endpoint sometimes returns `{}` in some networks, so we avoid relying on it.
@@ -511,7 +511,7 @@ def fetch_football_fixtures():
     wat_today = datetime.now(WAT_OFFSET).date()
     window_end_wat = _wat_window_end_for_today(wat_today)
     start_utc = datetime.combine(wat_today, dt_time.min, tzinfo=WAT_OFFSET).astimezone(timezone.utc).date()
-    # Extend the window to include early-next-day fixtures (e.g., 00:00â€“02:59 WAT tomorrow).
+    # Extend the window to include early-next-day fixtures (e.g., 00:00�?"02:59 WAT tomorrow).
     end_utc = (window_end_wat - timedelta(seconds=1)).astimezone(timezone.utc).date()
     utc_dates = sorted({start_utc.strftime("%Y-%m-%d"), end_utc.strftime("%Y-%m-%d")})
     date_from = utc_dates[0]
@@ -582,12 +582,12 @@ def fetch_football_fixtures():
                         })
                         seen_ids.add(fid)
                     found = True
-                    break  # Got results â€” no need to try previous season
+                    break  # Got results �?" no need to try previous season
 
             if not found:
                 print(f"[INFO] Football {name}: 0 fixtures today.")
     else:
-        print("[WARN] FOOTBALL_API_KEYS missing â€” skipping API-Football fixtures.")
+        print("[WARN] FOOTBALL_API_KEYS missing �?" skipping API-Football fixtures.")
 
     # Fallback to football-data.org if no fixtures from api-football and client available
     fdc = _get_football_data_client()
@@ -866,11 +866,11 @@ def fetch_football_odds(fixture_id):
         return None
 
 
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+# �.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.�
 # BASKETBALL FETCHERS
-# Stats source : ESPN hidden API â€” site.api.espn.com (free, no key, live)
+# Stats source : ESPN hidden API �?" site.api.espn.com (free, no key, live)
 # Games source : BallDontLie /v1/games (free)
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+# �.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.�
 
 ESPN_NBA_STANDINGS = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba/standings"
 ESPN_WNBA_STANDINGS = "https://site.api.espn.com/apis/site/v2/sports/basketball/wnba/standings"
@@ -895,7 +895,7 @@ _rapidapi_disable_player_info = False
 _rapidapi_known_ranks = {}      # {"id:123" or "name:foo bar": rank}
 _rapidapi_key_index = 0
 
-# Hardcoded BallDontLie v1 team_id â†’ abbreviation (IDs never change)
+# Hardcoded BallDontLie v1 team_id �?' abbreviation (IDs never change)
 _BDL_ID_TO_ABBREV = {
     1:"ATL", 2:"BOS", 3:"BKN", 4:"CHA", 5:"CHI", 6:"CLE", 7:"DAL",
     8:"DEN", 9:"DET", 10:"GSW", 11:"HOU", 12:"IND", 13:"LAC", 14:"LAL",
@@ -915,7 +915,7 @@ _ESPN_ABBREV_MAP = {
     "UTA": "UTAH",
 }
 
-# â”€â”€ 2024-25 hardcoded fallback standings (used when NBA.com times out) â”€â”€â”€â”€â”€â”€â”€â”€
+# �"?�"? 2024-25 hardcoded fallback standings (used when NBA.com times out) �"?�"?�"?�"?�"?�"?�"?�"?
 # Updated to approximate mid-season standings. Bot uses this instantly if
 # NBA.com is unreachable, then overwrites with live data on next successful call.
 NBA_FALLBACK_STATS = {
@@ -1045,7 +1045,7 @@ def _load_nba_stats_from_espn():
             sample = list(_nba_stats_cache.items())[:3]
             for abbr, s in sample:
                 print(f"[INFO] ESPN {abbr}: W={s['wins']} L={s['losses']} W%={s['win_pct']:.3f}")
-            print(f"[INFO] ESPN NBA stats loaded: {len(_nba_stats_cache)} teams âœ…")
+            print(f"[INFO] ESPN NBA stats loaded: {len(_nba_stats_cache)} teams �o.")
         else:
             print("[WARN] ESPN team detail stats could not be loaded; falling back to scoreboard records.")
             _load_nba_stats_from_espn_scoreboard()
@@ -1132,7 +1132,7 @@ def _load_wnba_stats_from_espn():
             sample = list(_wnba_stats_cache.items())[:3]
             for abbr, s in sample:
                 print(f"[INFO] ESPN WNBA {abbr}: W={s['wins']} L={s['losses']} W%={s['win_pct']:.3f}")
-            print(f"[INFO] ESPN WNBA stats loaded: {len(_wnba_stats_cache)} teams âœ…")
+            print(f"[INFO] ESPN WNBA stats loaded: {len(_wnba_stats_cache)} teams �o.")
         else:
             print("[WARN] ESPN WNBA stats could not be loaded.")
     except Exception as e:
@@ -1182,13 +1182,13 @@ def _load_nba_stats_from_espn_scoreboard():
                         "win_pct": round(w_pct, 3),
                     }
         if _nba_stats_cache:
-            print(f"[INFO] ESPN scoreboard fallback: {len(_nba_stats_cache)} teams âœ…")
+            print(f"[INFO] ESPN scoreboard fallback: {len(_nba_stats_cache)} teams �o.")
     except Exception as e:
         print(f"[WARN] ESPN scoreboard fallback failed: {e}")
 
 def _load_bdl_team_abbrev_map():
     """
-    Build BallDontLie team_id â†’ abbreviation map.
+    Build BallDontLie team_id �?' abbreviation map.
     First tries the API, falls back to hardcoded map if API fails or IDs mismatch.
     """
     global _nba_bdl_id_map
@@ -1206,7 +1206,7 @@ def _load_bdl_team_abbrev_map():
                         _nba_bdl_id_map[tid] = abbr
                 print(f"[INFO] BDL team map loaded from API: {len(_nba_bdl_id_map)} teams.")
         else:
-            print("[WARN] BALLDONTLIE_KEYS missing â€” using hardcoded NBA team map.")
+            print("[WARN] BALLDONTLIE_KEYS missing �?" using hardcoded NBA team map.")
     except Exception as e:
         print(f"[WARN] BDL team map API failed: {e}")
 
@@ -1232,7 +1232,7 @@ def fetch_nba_team_season_stats(team_id, season="2024-25", team_name=""):
 
     # Fallback: match by team name if ID lookup failed
     if not stats and team_name:
-        # Extract abbreviation from team name e.g. "Boston Celtics" â†’ "BOS"
+        # Extract abbreviation from team name e.g. "Boston Celtics" �?' "BOS"
         NAME_TO_ABBREV = {
             "Atlanta Hawks":"ATL","Boston Celtics":"BOS","Brooklyn Nets":"BKN",
             "Charlotte Hornets":"CHA","Chicago Bulls":"CHI","Cleveland Cavaliers":"CLE",
@@ -1250,7 +1250,7 @@ def fetch_nba_team_season_stats(team_id, season="2024-25", team_name=""):
         if abbrev:
             stats = _nba_stats_cache.get(abbrev, {})
             if stats:
-                print(f"[INFO] NBA: matched {team_name!r} â†’ {abbrev}")
+                print(f"[INFO] NBA: matched {team_name!r} �?' {abbrev}")
 
     if not stats:
         # Try ESPN abbreviation mapping (e.g. WAS -> WSH, GSW -> GS)
@@ -1258,7 +1258,7 @@ def fetch_nba_team_season_stats(team_id, season="2024-25", team_name=""):
         if espn_abbrev != abbrev:
             stats = _nba_stats_cache.get(espn_abbrev, {})
             if stats:
-                print(f"[INFO] NBA: matched {team_name!r} ({abbrev}) â†’ ESPN {espn_abbrev}")
+                print(f"[INFO] NBA: matched {team_name!r} ({abbrev}) �?' ESPN {espn_abbrev}")
 
     if not stats:
         print(f"[WARN] NBA: no stats for team_id={team_id} name={team_name!r} abbrev={abbrev!r}")
@@ -1268,7 +1268,7 @@ def fetch_nba_team_season_stats(team_id, season="2024-25", team_name=""):
 def _ensure_wnba_stats_loaded():
     _load_wnba_stats_from_espn()
     if not _wnba_stats_cache:
-        print("[WARN] ESPN WNBA stats failed â€” no stats available. Predictions will use defaults.")
+        print("[WARN] ESPN WNBA stats failed �?" no stats available. Predictions will use defaults.")
 
 
 def fetch_wnba_team_season_stats(team_abbrev, team_name=""):
@@ -1293,7 +1293,7 @@ def _ensure_nba_stats_loaded(season="2024-25"):
     _load_bdl_team_abbrev_map()
     _load_nba_stats_from_espn()
     if not _nba_stats_cache:
-        print("[WARN] ESPN NBA stats failed â€” no stats available. Predictions will use defaults.")
+        print("[WARN] ESPN NBA stats failed �?" no stats available. Predictions will use defaults.")
 
 def fetch_nba_fixtures():
     """
@@ -1309,13 +1309,13 @@ def fetch_nba_fixtures():
 
     nc = _get_nba_client()
     if not nc:
-        print("[WARN] BALLDONTLIE_KEYS missing â€” cannot load NBA fixtures.")
+        print("[WARN] BALLDONTLIE_KEYS missing �?" cannot load NBA fixtures.")
         return []
 
     now_utc  = datetime.now(timezone.utc)
     now_wat  = now_utc.astimezone(WAT_OFFSET)
 
-    # WAT day boundaries: 00:00 WAT today â†’ cutoff tomorrow
+    # WAT day boundaries: 00:00 WAT today �?' cutoff tomorrow
     today_wat_date = now_wat.date()
     day_start_wat  = datetime(today_wat_date.year, today_wat_date.month,
                               today_wat_date.day, 0, 0, tzinfo=WAT_OFFSET)
@@ -1501,7 +1501,7 @@ def fetch_wnba_fixtures():
           f"(now {now_wat.strftime('%H:%M WAT')}).")
     return games
 
-# â”€â”€ Tennis player cache + embedded rankings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# �"?�"? Tennis player cache + embedded rankings �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
 _tennis_player_cache = {}
 _tennis_player_key_map = {}  # player_name (normalized) -> player_key from fixtures
 
@@ -1651,7 +1651,7 @@ def fetch_tennis_player_stats(player_key, surface="hard", player_name="", known_
                 "surface_win_pct": round(win_pct, 3),
                 "days_since_last_match": 1,
             }
-            print(f"[INFO] Tennis rank lookup: {player_name} â†’ #{rank} (win_pct={win_pct:.2f})")
+            print(f"[INFO] Tennis rank lookup: {player_name} �?' #{rank} (win_pct={win_pct:.2f})")
         else:
             print(f"[WARN] Tennis: no rank found for '{player_name}'")
 
@@ -1663,7 +1663,7 @@ def _old_fetch_tennis_player_stats_DEPRECATED(player_key, surface="hard"):
     pass  # replaced above
 
 def _call_tennis_api(params):
-    """Helper â€” tries all TENNIS_KEYS, returns parsed result list or []."""
+    """Helper �?" tries all TENNIS_KEYS, returns parsed result list or []."""
     for key in TENNIS_KEYS:
         try:
             r = _http.get(API_TENNIS_URL, params={**params, "APIkey": key}, timeout=10)
@@ -1673,11 +1673,11 @@ def _call_tennis_api(params):
                     return body.get("result", [])
                 print(f"[WARN] Tennis API: {body.get('error', 'unknown error')}")
             elif r.status_code in (403, 429):
-                print(f"[ROTATE] Tennis key {r.status_code} â€” trying next...")
+                print(f"[ROTATE] Tennis key {r.status_code} �?" trying next...")
             else:
                 print(f"[WARN] Tennis API HTTP {r.status_code}")
         except Exception as e:
-            print(f"[ROTATE] Tennis key error: {e} â€” trying next...")
+            print(f"[ROTATE] Tennis key error: {e} �?" trying next...")
     return []
 
 
@@ -1910,11 +1910,11 @@ def fetch_tennis_fixtures():
     if rate_limited_any:
         any_raw = any(raw_today_by_tour.values()) or any(raw_tomorrow_by_tour.values())
         if not any_raw:
-            print("[WARN] RapidAPI tennis rate-limited (429) Ã¢â‚¬â€ no fixtures returned.")
+            print("[WARN] RapidAPI tennis rate-limited (429) â�,��?� no fixtures returned.")
     if rate_limited_any:
         any_raw = any(raw_today_by_tour.values()) or any(raw_tomorrow_by_tour.values())
         if not any_raw:
-            print("[WARN] RapidAPI tennis rate-limited (429) Ã¢â‚¬â€ no fixtures returned.")
+            print("[WARN] RapidAPI tennis rate-limited (429) â�,��?� no fixtures returned.")
 
     for g in raw_data:
         gid = g.get("event_key")
@@ -2449,9 +2449,9 @@ def fetch_tennis_player_stats_rapidapi(player_key, surface="hard", player_name="
     return stats
 
 
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+# �.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.�
 # CARD FORMATTERS
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+# �.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.�
 def ko_str(kickoff, reference_date=None):
     """Convert any ISO timestamp to WAT. Labels next-day early games clearly."""
     try:
@@ -2459,7 +2459,7 @@ def ko_str(kickoff, reference_date=None):
         dt_wat = dt.astimezone(WAT_OFFSET)
         today  = reference_date or datetime.now(WAT_OFFSET).date()
         if dt_wat.date() != today:
-            # Next day early morning (00:00-06:00 WAT) â€” label the day
+            # Next day early morning (00:00-06:00 WAT) �?" label the day
             day_name = dt_wat.strftime("%a")   # e.g. "Tue"
             return f"{dt_wat.strftime('%H:%M')} WAT ({day_name})"
         return dt_wat.strftime("%H:%M WAT")
@@ -2467,76 +2467,71 @@ def ko_str(kickoff, reference_date=None):
         return "TBC"
 
 
-# â”€â”€ Football card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+# �"?�"? Football card �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
 def format_football_card(fix, pred):
     gender = (fix.get("gender") or "").strip().lower()
     gender_tag = " (Women)" if gender == "women" else ""
-    w_e      = {"home": "ðŸ ", "draw": "ðŸ¤", "away": "âœˆï¸"}.get(pred["winner"], "â“")
-    btts_e   = "âœ…" if pred["btts"] == "Yes" else "âŒ"
-    ou_e     = "â¬†ï¸" if pred["over_under"] == "Over 2.5" else "â¬‡ï¸"
+    venue = fix.get("venue", "TBC")
+
+    winner_map = {"home": "H", "draw": "D", "away": "A"}
+    w_e = winner_map.get(pred.get("winner"), "?")
     conf = int(round(float(pred.get("confidence", 0) or 0)))
     conf = max(0, min(conf, 100))
-    conf_bar = "â–ˆ" * (conf // 10) + "â–‘" * (10 - conf // 10)
+    conf_bar = "#" * (conf // 10) + "-" * (10 - conf // 10)
 
     vb_block = ""
     if pred.get("value_bets"):
-        lines = ["\nðŸŽ° *VALUE BETS*"]
+        lines = ["\nVALUE BETS"]
         for vb in pred["value_bets"]:
-            lines.append(f"   ðŸ’Ž *{vb['outcome']}* @ `{vb['odd']}` | Edge: `+{vb['value']}%`")
+            lines.append(f"  {vb['outcome']} @ {vb['odd']} | Edge: +{vb['value']}%")
         vb_block = "\n".join(lines)
 
-    note_line = f"\nâš ï¸ _{pred['data_note']}_" if pred.get("data_note") else ""
-    venue = fix.get("venue", "TBC")
+    note_line = f"\nNOTE: {pred['data_note']}" if pred.get("data_note") else ""
 
     return f"""
-âš½ *FOOTBALL{gender_tag} â€” {fix['league']}*
-ðŸ†š *{fix['home_team']}* vs *{fix['away_team']}*
-â° `{ko_str(fix['kickoff'])}` ðŸ“ _{venue}_{note_line}
+FOOTBALL{gender_tag} - {fix['league']}
+{fix['home_team']} vs {fix['away_team']}
+Time: {ko_str(fix['kickoff'])}  Venue: {venue}{note_line}
 
-ðŸŽ¯ {pred['grade']} | {w_e} *{pred['winner_label']}* `{conf}%`
-`[{conf_bar}]`
-ðŸ `{pred['prob_home']}%` ðŸ¤`{pred['prob_draw']}%` âœˆï¸`{pred['prob_away']}%`
+PREDICTION: {"HIGH" if "HIGH" in pred['grade'] else "MEDIUM" if "MEDIUM" in pred['grade'] else "LOW"} | {w_e} {pred['winner_label']} ({conf}%)
+[{conf_bar}]
+Home {pred['prob_home']}%  Draw {pred['prob_draw']}%  Away {pred['prob_away']}%
 
-{ou_e} *Goals:* `{pred['over_under']}` _({pred['ou_prob']}%)_  ðŸ”¢ xG `{pred['expected_goals']}`
-{btts_e} *BTTS:* `{pred['btts']}` _({pred['btts_prob']}%)_
-ðŸŽ¯ *Score:* `{pred['correct_score']}` _({pred['score_prob']}%)_
-{vb_block}
-ðŸ“Š ðŸ `{pred['home_form']}` âœˆï¸`{pred['away_form']}`
-ðŸ’¡ _{pred['key_factor']}_{"" if not pred.get("home_news") else chr(10) + "ðŸ“° ðŸ _" + pred.get("home_news","") + "_ âœˆï¸_" + pred.get("away_news","") + "_"}
+Goals: {pred['over_under']} ({pred['ou_prob']}%)  xG {pred['expected_goals']}
+BTTS: {pred['btts']} ({pred['btts_prob']}%)
+Score: {pred['correct_score']} ({pred['score_prob']}%)
+
+Form: H {pred.get('home_form','N/A')}  A {pred.get('away_form','N/A')}
+Key: {pred['key_factor']}{vb_block}
 """.strip()
 
-
-# â”€â”€ Basketball card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def format_basketball_card(fix, pred):
-    w_e      = "ðŸ " if pred["winner"] == "home" else "âœˆï¸"
     conf = int(round(float(pred.get("confidence", 0) or 0)))
     conf = max(0, min(conf, 100))
-    conf_bar = "â–ˆ" * (conf // 10) + "â–‘" * (10 - conf // 10)
-    ou_e     = "â¬†ï¸" if "Over" in pred["over_under"] else "â¬‡ï¸"
+    conf_bar = "#" * (conf // 10) + "-" * (10 - conf // 10)
+    winner = "HOME" if pred.get("winner") == "home" else "AWAY"
 
     return f"""
-ðŸ€ *NBA*
-ðŸ†š *{fix['home_team']}* vs *{fix['away_team']}*
-â° `{ko_str(fix['kickoff'])}` ðŸ“ _{fix.get('venue', 'TBC')}_
+NBA
+{fix['home_team']} vs {fix['away_team']}
+Time: {ko_str(fix['kickoff'])}  Venue: {fix.get('venue','TBC')}
 
-ðŸŽ¯ {pred['grade']} | {w_e} *{pred['winner_label']}* `{conf}%`
-`[{conf_bar}]`
-ðŸ `{pred['prob_home']}%`  âœˆï¸`{pred['prob_away']}%`
+PREDICTION: {"HIGH" if "HIGH" in pred['grade'] else "MEDIUM" if "MEDIUM" in pred['grade'] else "LOW"} | {winner} {pred['winner_label']} ({conf}%)
+[{conf_bar}]
+Home {pred['prob_home']}%  Away {pred['prob_away']}%
 
-{ou_e} *Total Points:* `{pred['over_under']}`
-   Predicted score: `{pred['pred_score']}`  Total: `{pred['pred_total']}`
-ðŸ“ *Spread:* `{pred['spread']}`
-ðŸƒ *Game pace:* `{pred['game_pace']} poss/48min`
+Total Points: {pred['over_under']}
+Predicted score: {pred['pred_score']}  Total: {pred['pred_total']}
+Spread: {pred['spread']}
+Game pace: {pred['game_pace']} poss/48min
 
-ðŸ“Š *Team profile:*
-   ðŸ  {fix['home_team']}: `{pred['home_profile']}`
-   âœˆï¸  {fix['away_team']}: `{pred['away_profile']}`
+Team profile:
+  Home: {pred['home_profile']}
+  Away: {pred['away_profile']}
 
-ðŸ’¡ _{pred['key_factor']}_{"" if not pred.get("injury_note") else chr(10) + "ðŸ¥ " + pred["injury_note"]}{"" if not pred.get("home_recent") else chr(10) + "ðŸ“Š ðŸ `" + " ".join({"W":"âœ…","L":"âŒ"}.get(c,"â¬œ") for c in pred.get("home_recent","")) + "` âœˆï¸`" + " ".join({"W":"âœ…","L":"âŒ"}.get(c,"â¬œ") for c in pred.get("away_recent","")) + "`"}
+Key: {pred['key_factor']}{"" if not pred.get("injury_note") else "\nInjuries: " + pred["injury_note"]}{"" if not pred.get("home_recent") else "\nRecent: H " + " ".join({"W":"W","L":"L"}.get(c,"?") for c in pred.get("home_recent","")) + " / A " + " ".join({"W":"W","L":"L"}.get(c,"?") for c in pred.get("away_recent",""))}
 """.strip()
 
-
-# â”€â”€ Tennis card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def format_tennis_card(fix, pred):
     gender = (fix.get("gender") or "").strip().lower()
     fmt = (fix.get("match_format") or "").strip().lower()
@@ -2549,24 +2544,19 @@ def format_tennis_card(fix, pred):
         gender_tag = " (Mixed)"
 
     format_tag = ""
-    if fmt == "mixed_doubles":
+    if fmt in ("mixed_doubles","doubles"):
         format_tag = " Doubles"
-    elif fmt == "doubles":
-        format_tag = " Doubles"
-    elif fmt == "singles":
-        format_tag = ""
 
     conf = int(round(float(pred.get("confidence", 0) or 0)))
     conf = max(0, min(conf, 100))
-    conf_bar   = "â–ˆ" * (conf // 10) + "â–‘" * (10 - conf // 10)
-    ou_e       = "â¬†ï¸" if "Over" in pred["over_under"] else "â¬‡ï¸"
-    rank_home  = pred.get("rank_home", 999)
-    rank_away  = pred.get("rank_away", 999)
-    rank_line  = ""
+    conf_bar = "#" * (conf // 10) + "-" * (10 - conf // 10)
+    rank_home = pred.get("rank_home", 999)
+    rank_away = pred.get("rank_away", 999)
+    rank_line = ""
     if rank_home < 999 or rank_away < 999:
         rh = f"#{rank_home}" if rank_home < 999 else "NR"
         ra = f"#{rank_away}" if rank_away < 999 else "NR"
-        rank_line = f"\nðŸ… *Rankings:* ðŸ `{rh}`  âœˆï¸`{ra}`"
+        rank_line = f"\nRankings: H {rh}  A {ra}"
 
     b2b_line = ""
     if fix.get("back_to_back"):
@@ -2579,142 +2569,126 @@ def format_tennis_card(fix, pred):
         b2b_line = f"\nBack-to-back: {who} played yesterday"
 
     return f"""
-ðŸŽ¾ *TENNIS{gender_tag}{format_tag} â€” {pred['tournament']}*
-ðŸ†š *{fix['home_team']}* vs *{fix['away_team']}*
-â° `{ko_str(fix['kickoff'])}` ðŸŸï¸ _{pred['surface']} Court_{rank_line}{b2b_line}
+TENNIS{gender_tag}{format_tag} - {pred['tournament']}
+{fix['home_team']} vs {fix['away_team']}
+Time: {ko_str(fix['kickoff'])}  Surface: {pred['surface']}{rank_line}{b2b_line}
 
-ðŸŽ¯ {pred['grade']} | ðŸŽ¾ *{pred['winner_label']}* `{conf}%`
-`[{conf_bar}]`
-ðŸ `{pred['prob_home']}%`  âœˆï¸`{pred['prob_away']}%`
+PREDICTION: {"HIGH" if "HIGH" in pred['grade'] else "MEDIUM" if "MEDIUM" in pred['grade'] else "LOW"} | {pred['winner_label']} ({conf}%)
+[{conf_bar}]
+Home {pred['prob_home']}%  Away {pred['prob_away']}%
 
-ðŸ“‹ *Format:* `{pred['sets_format']}` | Predicted: `{pred['pred_sets']}`
-ðŸŽ¯ *Set handicap:* `{pred['handicap']}`
-{ou_e} *Over/Under games:* `{pred['over_under']}` _(pred: {pred['pred_games']} games)_
+Format: {pred['sets_format']} | Predicted: {pred['pred_sets']}
+Set handicap: {pred['handicap']}
+Over/Under games: {pred['over_under']} (pred: {pred['pred_games']} games)
 
-ðŸŽ¾ *Serve profile:*
-   ðŸ  {fix['home_team']}: `{pred['home_serve']}`
-   âœˆï¸  {fix['away_team']}: `{pred['away_serve']}`
+Serve profile:
+  Home: {pred['home_serve']}
+  Away: {pred['away_serve']}
 
-ðŸ’¡ _{pred['key_factor']}_{"" if not pred.get("home_news") else chr(10) + "ðŸ“° ðŸ _" + pred.get("home_news","") + "_ âœˆï¸_" + pred.get("away_news","") + "_"}
+Key: {pred['key_factor']}{"" if not pred.get("home_news") else "\nNews H: " + pred.get("home_news","") + " | A: " + pred.get("away_news","")}
 """.strip()
 
-
-# â”€â”€ Summary card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 def format_sport_summary(sport_emoji, sport_name, results, date_str):
-    grade_e      = {"HIGH ðŸ”¥": "ðŸ”¥", "MEDIUM âš¡": "âš¡", "LOW ðŸŒ¡ï¸": "ðŸŒ¡ï¸"}
-    lines        = [
-        "â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•-",
-        f"{sport_emoji} *{sport_name} PREDICTIONS*",
-        f"ðŸ“… *{date_str}*",
-        "â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•\n",
+    lines = [
+        "============================",
+        f"{sport_name} PREDICTIONS",
+        f"{date_str}",
+        "============================\n",
     ]
     value_alerts = []
 
+    def _grade_label(g):
+        if "HIGH" in g:
+            return "HIGH"
+        if "MEDIUM" in g:
+            return "MEDIUM"
+        return "LOW"
+
     for fix, pred in results:
-        g     = grade_e.get(pred.get("grade", ""), "")
-        w_e   = {"home": "ðŸ ", "draw": "ðŸ¤", "away": "âœˆï¸"}.get(pred.get("winner", ""), "ðŸ…")
-        ko    = ko_str(fix["kickoff"])
-        label = pred.get("winner_label", "?")
-        conf  = pred.get("confidence",  "?")
+        g = _grade_label(pred.get("grade", ""))
+        winner = pred.get("winner_label", "?")
+        conf = pred.get("confidence", "?")
+        ko = ko_str(fix["kickoff"])
 
         if fix["sport"] == "football":
-            ou   = pred.get("over_under", "")
+            ou = pred.get("over_under", "")
             btts = pred.get("btts", "")
             gtag = " (Women)" if (fix.get("gender") or "").lower() == "women" else ""
             lines.append(
-                f"{g} *{fix['home_team']}* vs *{fix['away_team']}*{gtag}\n"
-                f"   {w_e} `{label}` ({conf}%) | "
-                f"{'â¬†ï¸' if 'Over' in ou else 'â¬‡ï¸'}{ou} | BTTS:{btts} | â°`{ko}`\n"
+                f"{fix['home_team']} vs {fix['away_team']}{gtag}\n"
+                f"  {g} {winner} ({conf}%) | {ou} | BTTS:{btts} | {ko}\n"
             )
         elif fix["sport"] == "basketball":
-            ou  = pred.get("over_under", "")
+            ou = pred.get("over_under", "")
             pts = pred.get("pred_score", "")
             lines.append(
-                f"{g} *{fix['home_team']}* vs *{fix['away_team']}*\n"
-                f"   {w_e} `{label}` ({conf}%) | "
-                f"{'â¬†ï¸' if 'Over' in ou else 'â¬‡ï¸'}{ou} | Score:`{pts}` | â°`{ko}`\n"
+                f"{fix['home_team']} vs {fix['away_team']}\n"
+                f"  {g} {winner} ({conf}%) | {ou} | Score:{pts} | {ko}\n"
             )
         elif fix["sport"] == "tennis":
             surf = pred.get("surface", "")
             lines.append(
-                f"{g} *{fix['home_team']}* vs *{fix['away_team']}*\n"
-                f"   ðŸŽ¾ `{label}` ({conf}%) | {surf} | â°`{ko}`\n"
+                f"{fix['home_team']} vs {fix['away_team']}\n"
+                f"  {g} {winner} ({conf}%) | {surf} | {ko}\n"
             )
 
         for vb in pred.get("value_bets", []):
             value_alerts.append(
-                f"ðŸ’Ž *{fix['home_team']} v {fix['away_team']}* â€” "
-                f"{vb['outcome']} @ `{vb['odd']}` (+{vb['value']}%)"
+                f"{fix['home_team']} v {fix['away_team']} - {vb['outcome']} @ {vb['odd']} (+{vb['value']}%)"
             )
 
     if value_alerts:
-        lines.append("â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”")
-        lines.append("ðŸŽ° *VALUE BETS*")
+        lines.append("----------------------------")
+        lines.append("VALUE BETS")
         lines += value_alerts
 
-    lines.append("\nâš ï¸ _For entertainment only. Bet responsibly._")
+    lines.append("\nFor entertainment only. Bet responsibly.")
     return "\n".join(lines)
 
-
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
-# MATCHDAY SCHEDULE CARD
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
 def format_matchday_schedule(date_str, football_fixtures, nba_fixtures, tennis_fixtures):
-    """
-    Sends one clean card showing all games for the day across all sports.
-    No predictions â€” just teams + kickoff times in WAT.
-    """
     lines = [
-        "â•”â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•-",
-        f"ðŸ“… *TODAY'S FIXTURES*",
-        f"*{date_str}*",
-        "â•šâ•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•",
+        "============================",
+        "TODAY'S FIXTURES",
+        f"{date_str}",
+        "============================",
     ]
 
-    # â”€â”€ Football â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if football_fixtures:
-        lines.append(f"\nâš½ *FOOTBALL* ({len(football_fixtures)} games)")
-        lines.append("â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”")
-        # Group by league
+        lines.append(f"\nFOOTBALL ({len(football_fixtures)} games)")
         by_league = {}
         for f in football_fixtures:
             by_league.setdefault(f["league"], []).append(f)
         for league, games in by_league.items():
-            lines.append(f"\nðŸ† _{league}_")
+            lines.append(f"\n{league}")
             for f in games:
-                lines.append(f"  â°`{ko_str(f['kickoff'])}` {f['home_team']} vs {f['away_team']}")
+                lines.append(f"  {ko_str(f['kickoff'])} {f['home_team']} vs {f['away_team']}")
 
-    # â”€â”€ NBA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if nba_fixtures:
-        lines.append(f"\nðŸ€ *NBA* ({len(nba_fixtures)} games)")
-        lines.append("â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”")
+        lines.append(f"\nNBA ({len(nba_fixtures)} games)")
         for f in nba_fixtures:
-            lines.append(f"  â°`{ko_str(f['kickoff'])}` {f['home_team']} vs {f['away_team']}")
+            lines.append(f"  {ko_str(f['kickoff'])} {f['home_team']} vs {f['away_team']}")
 
-    # â”€â”€ Tennis â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
     if tennis_fixtures:
-        lines.append(f"\nðŸŽ¾ *TENNIS* ({len(tennis_fixtures)} matches)")
-        lines.append("â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”")
-        # Group by tournament
+        lines.append(f"\nTENNIS ({len(tennis_fixtures)} matches)")
         by_tournament = {}
         for f in tennis_fixtures:
             by_tournament.setdefault(f["tournament"], []).append(f)
         for tournament, matches in by_tournament.items():
-            lines.append(f"\nðŸŸï¸ _{tournament}_")
+            lines.append(f"\n{tournament}")
             for f in matches:
-                lines.append(f"  â°`{ko_str(f['kickoff'])}` {f['home_team']} vs {f['away_team']}")
+                lines.append(f"  {ko_str(f['kickoff'])} {f['home_team']} vs {f['away_team']}")
 
     total = len(football_fixtures) + len(nba_fixtures) + len(tennis_fixtures)
-    lines.append(f"\nâ”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”")
-    lines.append(f"ðŸ“Š *{total} total games today*")
-    lines.append("_Predictions follow below_ ðŸ‘‡")
+    lines.append("\n----------------------------")
+    lines.append(f"{total} total games today")
+    lines.append("Predictions follow below")
 
     return "\n".join(lines)
 
 
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+# �.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.�
 # MAIN PIPELINE
-# â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•â•
+# �.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.��.�
 def run_predictions():
     validate_config()
     sender = TelegramSender(TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID)
@@ -2730,7 +2704,7 @@ def run_predictions():
     now_wat  = datetime.now(WAT_OFFSET)
     date_str = now_wat.strftime("%A, %d %B %Y")
 
-    # â”€â”€ STEP 1: Fetch all fixtures first â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # �"?�"? STEP 1: Fetch all fixtures first �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
     print("\n[INFO] Fetching all fixtures...")
     football_fixtures = fetch_football_fixtures()
     nba_fixtures      = fetch_nba_fixtures()
@@ -2738,148 +2712,15 @@ def run_predictions():
 
     total_games = len(football_fixtures) + len(nba_fixtures) + len(tennis_fixtures)
 
-    # â”€â”€ STEP 2: Send full matchday schedule â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # �"?�"? STEP 2: Send full matchday schedule �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
     print("[INFO] Sending matchday schedule...")
     sender.send_message(
-        f"ðŸ¤– *DAILY SPORTS BOT*\n"
-        f"ðŸ“… *{date_str}*\n"
-        f"âš½ Football | ðŸ€ NBA | ðŸŽ¾ Tennis\n"
-        f"â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”â”",
+        f"DAILY SPORTS BOT\n"
+        f"{date_str}\n"
+        f"Football | NBA | Tennis\n"
+        f"----------------------------",
         parse_mode="Markdown"
     )
-
-    if total_games == 0:
-        sender.send_message("ðŸ“­ No games found for today across all sports.", parse_mode="Markdown")
-        return
-
-    sender.send_message(
-        format_matchday_schedule(date_str, football_fixtures, nba_fixtures, tennis_fixtures),
-        parse_mode="Markdown"
-    )
-
-    # â”€â”€ STEP 3: Predictions per sport â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    sender.send_message("ðŸ”® *PREDICTIONS LOADING...*", parse_mode="Markdown")
-
-    # â”€â”€ Football â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    print("\n[INFO] === FOOTBALL PREDICTIONS ===")
-    football_results = []
-    football_skipped = []
-
-    for fix in football_fixtures:
-        hs   = fetch_football_team_stats(fix["home_id"], fix["league_id"])
-        aws  = fetch_football_team_stats(fix["away_id"], fix["league_id"])
-        if fix.get("source") != "api-football":
-            h2h = []
-            odds = None
-        else:
-            h2h  = fetch_h2h(fix["home_id"], fix["away_id"])
-            odds = fetch_football_odds(fix["fixture_id"])
-        pred = f_pred.predict(fix, hs, aws, h2h, odds=odds)
-        if pred.get("skip"):
-            football_skipped.append(f"â­ {fix['home_team']} v {fix['away_team']} â€” {pred['reason']}")
-            continue
-        # Apply live data adjustments (ESPN form)
-        try:
-            from live_data import get_football_team_form
-            home_form = get_football_team_form(fix["home_team"], fix["league"])
-            away_form = get_football_team_form(fix["away_team"], fix["league"])
-            if home_form["last5"] or away_form["last5"]:
-                # Count wins in last 5 for each team
-                hw = home_form["last5"].count("W")
-                aw = away_form["last5"].count("W")
-                form_diff = (hw - aw) * 1.5   # each win diff = 1.5% shift
-                pred["prob_home"] = min(92, max(5, pred["prob_home"] + form_diff))
-                pred["prob_away"] = min(92, max(5, pred["prob_away"] - form_diff))
-                pred["prob_draw"] = max(5, 100 - pred["prob_home"] - pred["prob_away"])
-                if home_form["last5"]:
-                    pred["home_form"] = " ".join(
-                        {"W":"âœ…","D":"ðŸŸ¡","L":"âŒ"}.get(c,"â¬œ") for c in home_form["last5"]
-                    )
-                if away_form["last5"]:
-                    pred["away_form"] = " ".join(
-                        {"W":"âœ…","D":"ðŸŸ¡","L":"âŒ"}.get(c,"â¬œ") for c in away_form["last5"]
-                    )
-        except Exception:
-            pass
-        football_results.append((fix, pred))
-
-    if football_results:
-        sender.send_message(format_sport_summary("âš½", "FOOTBALL", football_results, date_str), parse_mode="Markdown")
-        for fix, pred in football_results:
-            sender.send_message(format_football_card(fix, pred), parse_mode="Markdown")
-    elif football_fixtures:
-        sender.send_message("âš½ Football fixtures found but no qualifying predictions (insufficient data).", parse_mode="Markdown")
-    else:
-        sender.send_message("âš½ No football matches today.", parse_mode="Markdown")
-
-    # â”€â”€ NBA â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    print("\n[INFO] === NBA PREDICTIONS ===")
-    nba_results = []
-
-    # Load all team stats ONCE before the loop (NBA.com or fallback)
-    _ensure_nba_stats_loaded()
-
-    for fix in nba_fixtures:
-        wp   = fix.pop("win_prob", None)
-        hs   = fetch_nba_team_season_stats(fix.get("home_id"), team_name=fix.get("home_team",""))
-        aws  = fetch_nba_team_season_stats(fix.get("away_id"), team_name=fix.get("away_team",""))
-        pred = b_pred.predict(fix, home_stats=hs, away_stats=aws, api_win_prob=wp)
-        # Apply live data adjustments (ESPN injuries + back-to-back)
-        try:
-            from live_data import (get_nba_injuries, get_nba_team_form,
-                                   injury_impact, back_to_back_impact)
-            home_inj  = get_nba_injuries(fix.get("home_team",""))
-            away_inj  = get_nba_injuries(fix.get("away_team",""))
-            home_form = get_nba_team_form(fix.get("home_team",""))
-            away_form = get_nba_team_form(fix.get("away_team",""))
-
-            home_adj = injury_impact(home_inj) + back_to_back_impact(home_form)
-            away_adj = injury_impact(away_inj) + back_to_back_impact(away_form)
-
-            pred["prob_home"] = min(92, max(5, pred["prob_home"] + home_adj - away_adj))
-            pred["prob_away"] = 100 - pred["prob_home"]
-
-            # Add injury note to card
-            notes = []
-            if home_inj:
-                out = [i["name"].split()[-1] for i in home_inj if "out" in i.get("status","").lower()]
-                if out: notes.append(f"ðŸ  Out: {', '.join(out[:3])}")
-            if away_inj:
-                out = [i["name"].split()[-1] for i in away_inj if "out" in i.get("status","").lower()]
-                if out: notes.append(f"âœˆï¸ Out: {', '.join(out[:3])}")
-            if home_form.get("back_to_back"):
-                notes.append(f"ðŸ  Back-to-back fatigue")
-            if away_form.get("back_to_back"):
-                notes.append(f"âœˆï¸ Back-to-back fatigue")
-            if notes:
-                pred["injury_note"] = " | ".join(notes)
-            if home_form.get("last5"):
-                pred["home_recent"] = home_form["last5"]
-            if away_form.get("last5"):
-                pred["away_recent"] = away_form["last5"]
-        except Exception as e:
-            print(f"[WARN] Live NBA data: {e}")
-        nba_results.append((fix, pred))
-
-    if nba_results:
-        sender.send_message(format_sport_summary("ðŸ€", "NBA BASKETBALL", nba_results, date_str), parse_mode="Markdown")
-        for fix, pred in nba_results:
-            sender.send_message(format_basketball_card(fix, pred), parse_mode="Markdown")
-    else:
-        sender.send_message("ðŸ€ No NBA games today.", parse_mode="Markdown")
-
-    # â”€â”€ Tennis â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-    print("\n[INFO] === TENNIS PREDICTIONS ===")
-    tennis_results = []
-
-    for fix in tennis_fixtures:
-        from tennis_predictor import TennisPredictor as _TP
-        surface    = _TP()._detect_surface(fix.get("tournament", ""))
-        # Pass both player_key AND player_name â€” name used as fallback when key is empty
-        home_stats = fetch_tennis_player_stats(
-            fix.get("home_player_key", ""), surface, player_name=fix.get("home_team", ""),
-            known_rank=fix.get("home_rank")
-        )
         away_stats = fetch_tennis_player_stats(
             fix.get("away_player_key", ""), surface, player_name=fix.get("away_team", ""),
             known_rank=fix.get("away_rank")
@@ -2900,28 +2741,37 @@ def run_predictions():
         tennis_results.append((fix, pred))
 
     if tennis_results:
-        sender.send_message(format_sport_summary("ðŸŽ¾", "TENNIS", tennis_results, date_str), parse_mode="Markdown")
+        sender.send_message(format_sport_summary("�YZ�", "TENNIS", tennis_results, date_str), parse_mode="Markdown")
         for fix, pred in tennis_results:
             sender.send_message(format_tennis_card(fix, pred), parse_mode="Markdown")
     else:
-        sender.send_message("ðŸŽ¾ No major tennis matches today.", parse_mode="Markdown")
+        sender.send_message("�YZ� No major tennis matches today.", parse_mode="Markdown")
 
-    # â”€â”€ Done â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    # �"?�"? Done �"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?�"?
     total_preds = len(football_results) + len(nba_results) + len(tennis_results)
-    print(f"\n[DONE] {total_preds} predictions sent â€” "
+    print(f"\n[DONE] {total_preds} predictions sent �?" "
           f"{len(football_results)} football, {len(nba_results)} NBA, {len(tennis_results)} tennis.")
     sender.send_message(
-        f"âœ… *All done!*\n"
-        f"ðŸ“Š `{total_games}` games today | `{total_preds}` predictions sent\n"
-        f"âš½ `{len(football_results)}` football | "
-        f"ðŸ€ `{len(nba_results)}` NBA | "
-        f"ðŸŽ¾ `{len(tennis_results)}` tennis",
+        f"�o. *All done!*\n"
+        f"�Y"S `{total_games}` games today | `{total_preds}` predictions sent\n"
+        f"�s� `{len(football_results)}` football | "
+        f"�Y�? `{len(nba_results)}` NBA | "
+        f"�YZ� `{len(tennis_results)}` tennis",
         parse_mode="Markdown"
     )
 
 
 if __name__ == "__main__":
     run_predictions()
+
+
+
+
+
+
+
+
+
 
 
 

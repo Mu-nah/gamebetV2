@@ -1,4 +1,4 @@
-"""
+﻿"""
 Scheduler v3
 
   ⚽ Football  → 2x per day  (08:00 and 13:00 UTC)
@@ -176,7 +176,7 @@ def run_football(dedupe: bool = True):
         # Use persisted sent IDs even when dedupe is off (manual --resend) so we don't spam notices.
         sent_any = _load_sent_ids("football", today)
         if not sent_any and not _load_notice_sent("football", today):
-            sender.send_message("⚽ No HIGH confidence football predictions right now.", parse_mode="Markdown")
+            sender.send_message("Football: No HIGH confidence predictions right now.", parse_mode="Markdown")
             _save_notice_sent("football", today)
     elif not fixtures:
         pass  # silent — no fixtures
@@ -238,7 +238,7 @@ def run_nba(dedupe: bool = True):
         # Don't spam "no qualifying" if we've already sent any picks today.
         sent_any = _load_sent_ids("nba", today)
         if not sent_any and not _load_notice_sent("nba", today):
-            sender.send_message("🏀 No HIGH confidence NBA predictions right now.", parse_mode="Markdown")
+            sender.send_message("NBA: No HIGH confidence predictions right now.", parse_mode="Markdown")
             _save_notice_sent("nba", today)
     print(f"[NBA] {len(results)} sent (LOW confidence filtered out).")
 
@@ -268,7 +268,7 @@ def run_nba(dedupe: bool = True):
     else:
         sent_any = _load_sent_ids("wnba", today)
         if not sent_any and not _load_notice_sent("wnba", today):
-            sender.send_message("🏀 No HIGH confidence WNBA predictions right now.", parse_mode="Markdown")
+            sender.send_message("WNBA: No HIGH confidence predictions right now.", parse_mode="Markdown")
             _save_notice_sent("wnba", today)
     print(f"[WNBA] {len(wnba_results)} sent (LOW confidence filtered out).")
 
@@ -357,7 +357,7 @@ def run_tennis(dedupe: bool = True):
     else:
         sent_any = _load_sent_ids("tennis", today)
         if not sent_any and not _load_notice_sent("tennis", today):
-            sender.send_message("🎾 No qualifying tennis predictions right now.", parse_mode="Markdown")
+            sender.send_message("Tennis: No qualifying predictions right now.", parse_mode="Markdown")
             _save_notice_sent("tennis", today)
     if skipped_already_sent:
         print(f"[INFO] Tennis: skipped {skipped_already_sent} already-sent fixture(s) today.")
@@ -436,3 +436,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
