@@ -5,6 +5,30 @@ RUN_MODE (set by GitHub Actions env var):
   normal       — every 3hr run:  dedup ON,  HIGH filter ON,  marks sent
   daily_reset  — 1am WAT run:    dedup OFF, HIGH filter ON,  marks sent
   force        — manual trigger: dedup OFF, HIGH filter ON,  does NOT mark sent
+
+TOMORROW FALLBACK:
+  If today's HIGH picks < 3, automatically fetches tomorrow's schedule
+  and appends any HIGH picks, clearly labelled "📅 TOMORROW".
+  Tomorrow picks are NOT written to the sent-dedup file (they'll be
+  re-evaluated fresh on tomorrow's daily_reset run).
+
+DOM CONFIRMED (from live page capture):
+  MATCHES PAGE  /matches/?type=wta-single&day=today  (or &day=1 for tomorrow)
+    Match rows use TWO consecutive tr rows:
+      row1: td.first.time  (time only, e.g. "18:30")
+            td.t-name a[href*='/player/']  (player 1, slug in href)
+            td.s-color span[title]         (surface)
+            td.course ×2                   (odds)
+      row2: td.t-name a[href*='/player/']  (player 2)
+
+  PLAYER PROFILE  /player/{slug}/
+    Rank:    table.plDetail td div.date
+             "Current/Highest rank - singles: 3. / 2."
+    W/L:     table.result.balance tbody tr (first=cur yr, second=prev yr)
+             cols: 2=Clay 3=Hard 4=Indoors 5=Grass  text="16/6"
+    Form:    div#matches-{year}-1-data  tr.one/tr.two
+             td.t-name → <strong> wraps winner
+             td.s-color span[title] → match surface
 """
 
 from playwright.sync_api import sync_playwright
@@ -36,12 +60,14 @@ if RUN_MODE not in ("normal", "daily_reset", "force"):
     RUN_MODE = "normal"
 print(f"[MODE] RUN_MODE = {RUN_MODE.upper()}")
 
+# How many today picks before we skip fetching tomorrow
+TOMORROW_THRESHOLD = 3
+
 PREFETCH_LIMIT = 20
 SURFACE_COL    = {"clay": 2, "hard": 3, "indoors": 4, "grass": 5}
 
 SURFACE_ELO_DB: dict = {}
 _player_cache:  dict = {}
-_h2h_cache:     dict = {}
 _http = requests.Session()
 
 _RANK_RE      = re.compile(r"singles:\s*(\d+)\.")
@@ -93,25 +119,23 @@ def is_already_sent(p1: str, p2: str) -> bool:
     return _match_key(p1, p2) in sent.get(_today_wat(), [])
 
 def mark_as_sent(picks: list):
+    """Only mark today's picks — tomorrow picks are intentionally excluded."""
     sent  = _load_sent()
     today = _today_wat()
     sent.setdefault(today, [])
     for pk in picks:
+        if pk.get("is_tomorrow"):
+            continue   # never dedup tomorrow picks — re-evaluate fresh next run
         key = _match_key(pk["m"]["p1"], pk["m"]["p2"])
         if key not in sent[today]:
             sent[today].append(key)
-    # Purge entries older than 3 days
     cutoff = (datetime.now(WAT) - timedelta(days=3)).strftime("%Y-%m-%d")
-    sent = {k: v for k, v in sent.items() if k >= cutoff}
+    sent   = {k: v for k, v in sent.items() if k >= cutoff}
     _save_sent(sent)
 
 
 # ══════════════════════════════════════════════════════════════
 # RUN MODE FILTERS
-#
-#  normal       dedup ON  + HIGH only + marks sent
-#  daily_reset  dedup OFF + HIGH only + marks sent
-#  force        dedup OFF + HIGH only + does NOT mark sent
 # ══════════════════════════════════════════════════════════════
 def apply_mode_filters(picks: list) -> list:
     if RUN_MODE == "force":
@@ -124,16 +148,15 @@ def apply_mode_filters(picks: list) -> list:
         print(f"[MODE] DAILY_RESET — {len(filtered)} HIGH picks (dedup ignored)")
         return filtered
 
-    # normal
+    # normal — dedup + HIGH only
     before = len(picks)
     picks  = [pk for pk in picks
               if not is_already_sent(pk["m"]["p1"], pk["m"]["p2"])]
     picks  = [pk for pk in picks if pk.get("grade") == "HIGH"]
-    print(f"[MODE] NORMAL — {len(picks)} new HIGH picks ({before - len(picks)} filtered/deduped)")
+    print(f"[MODE] NORMAL — {len(picks)} new HIGH picks ({before - len(picks)} deduped)")
     return picks
 
 def should_mark_sent() -> bool:
-    # force runs are manual/debug — don't pollute the dedup file
     return RUN_MODE in ("normal", "daily_reset")
 
 
@@ -142,10 +165,10 @@ def should_mark_sent() -> bool:
 # ══════════════════════════════════════════════════════════════
 def send_telegram(msg: str):
     if not BOT_TOKEN:
-        print("⚠ BOT_TOKEN not set — not sending")
+        print("⚠ BOT_TOKEN not set")
         return
     if not CHAT_ID:
-        print("⚠ CHAT_ID not set — not sending")
+        print("⚠ CHAT_ID not set")
         return
     try:
         for chunk in [msg[i:i+4000] for i in range(0, len(msg), 4000)]:
@@ -238,10 +261,10 @@ def _parse_date(txt: str):
 def is_allowed_tournament(name: str) -> bool:
     n  = (name or "").strip()
     nl = n.lower()
-    if not n:                                              return False
-    if "itf" in nl:                                        return False
-    if _ITF_PREFIXES.search(n):                            return False
-    if any(x in nl for x in ("utr pro","utr ","futures","challenger")): return False
+    if not n:                                                           return False
+    if "itf" in nl:                                                     return False
+    if _ITF_PREFIXES.search(n):                                         return False
+    if any(x in nl for x in ("utr pro", "utr ", "futures","challenger")): return False
     return True
 
 _ERROR_TITLES = ("just a moment","access denied","429","too many requests","error 429")
@@ -283,22 +306,34 @@ def _safe_goto(page, url: str, context, retries: int = 2) -> bool:
 
 
 # ══════════════════════════════════════════════════════════════
-# STEP 1 — TODAY'S MATCHES
+# STEP 1 — GET MATCHES
+#
+# day="today"  → /matches/?type=wta-single&day=today
+# day="1"      → /matches/?type=wta-single&day=1   (tomorrow)
+#
+# Match row structure (confirmed from DOM):
+#   row1: td.first.time          → "18:30"  (time only — no date)
+#         td.t-name a[/player/]  → player 1 + slug
+#         td.s-color span[title] → surface
+#         td.course ×2           → odds
+#   row2: td.t-name a[/player/]  → player 2 + slug
 # ══════════════════════════════════════════════════════════════
-def get_today_matches(context) -> list:
+def get_matches(context, day: str = "today", label: str = "") -> list:
     page    = context.new_page()
     matches = []
-    print("🔍 Loading today's matches...")
+    tag     = f"[{label}] " if label else ""
+    print(f"🔍 {tag}Loading matches (day={day})...")
     try:
-        if not _safe_goto(page, f"{BASE}/matches/?type=wta-single&day=today", context):
-            print("❌ Failed to load matches page.")
+        url = f"{BASE}/matches/?type=wta-single&day={day}"
+        if not _safe_goto(page, url, context):
+            print(f"❌ {tag}Failed to load matches page.")
             return []
         try:
             page.wait_for_selector("td.first.time", timeout=15000)
         except Exception:
             pass
         page.wait_for_timeout(600)
-        print("✅ Page loaded")
+        print(f"✅ {tag}Page loaded")
 
         rows = page.query_selector_all("tr")
         print(f"   Total tr rows: {len(rows)}")
@@ -310,7 +345,7 @@ def get_today_matches(context) -> list:
         while i < len(rows) - 1:
             row1 = rows[i]
 
-            # ── Tournament header detection ──────────────────────
+            # ── Tournament header ────────────────────────────
             try:
                 t_name_td = row1.query_selector("td.t-name")
                 if t_name_td:
@@ -334,7 +369,7 @@ def get_today_matches(context) -> list:
             except Exception:
                 pass
 
-            # ── Match row ────────────────────────────────────────
+            # ── Match row ────────────────────────────────────
             try:
                 time_el = row1.query_selector("td.first.time")
                 p1_el   = row1.query_selector("td.t-name a[href*='/player/']")
@@ -378,9 +413,10 @@ def get_today_matches(context) -> list:
                 try:
                     rt = row1.query_selector("td.round, td.r")
                     if rt:
-                        rm = {"F":"🏆 Final","SF":"🥈 Semi","QF":"⚡ QF",
-                              "R16":"R16","R32":"R32","R64":"R64","R128":"R128"}
-                        round_label = rm.get(rt.inner_text().strip().upper(), rt.inner_text().strip())
+                        rm = {"F": "🏆 Final", "SF": "🥈 Semi", "QF": "⚡ QF",
+                              "R16": "R16", "R32": "R32", "R64": "R64", "R128": "R128"}
+                        round_label = rm.get(rt.inner_text().strip().upper(),
+                                             rt.inner_text().strip())
                 except Exception:
                     pass
 
@@ -401,7 +437,7 @@ def get_today_matches(context) -> list:
     finally:
         page.close()
 
-    print(f"🎾 Matches parsed: {len(matches)}")
+    print(f"🎾 {tag}Matches parsed: {len(matches)}")
     return matches
 
 
@@ -451,9 +487,9 @@ def get_player_data(context, slug: str, display_name: str, page=None) -> dict:
             print(f"   rank err: {e}")
 
         # ── Surface W/L (2-year weighted) ─────────────────────
-        # First table.result.balance = singles
+        # table.result.balance (first = singles)
+        # tbody first row = current year (weight ×2), second = prev year (×1)
         # cols: 2=Clay 3=Hard 4=Indoors 5=Grass
-        # current year ×2, previous year ×1
         sw, sl = {}, {}
         try:
             btables = page.query_selector_all("table.result.balance")
@@ -475,18 +511,18 @@ def get_player_data(context, slug: str, display_name: str, page=None) -> dict:
             print(f"   balance err: {e}")
 
         # ── Recent form + streak + fatigue ────────────────────
-        # div#matches-{year}-1-data  tr.one/two
-        # td.t-name: winner wrapped in <strong>
+        # div#matches-{year}-1-data  tr.one/tr.two
+        # td.t-name: <strong> = winner
         # td.s-color span[title]: match surface
         recent_wins = recent_total = streak = matches_30d = 0
         days_rest   = 3
         streak_locked = False
         recent_surface_wins  = {}
         recent_surface_total = {}
-        today = datetime.now()
+        today_dt = datetime.now()
 
         try:
-            year = today.year
+            year = today_dt.year
             mdiv = (page.query_selector(f"div#matches-{year}-1-data") or
                     page.query_selector(f"div#matches-{year-1}-1-data"))
             if mdiv:
@@ -521,13 +557,13 @@ def get_player_data(context, slug: str, display_name: str, page=None) -> dict:
                     match_date = _parse_date(date_td.inner_text()) if date_td else None
 
                     if idx == 0 and match_date:
-                        days_rest = max(0, (today - match_date).days)
-                    if match_date and (today - match_date).days <= 30:
+                        days_rest = max(0, (today_dt - match_date).days)
+                    if match_date and (today_dt - match_date).days <= 30:
                         matches_30d += 1
 
                     if won:
                         recent_wins += 1
-                        recent_surface_wins[m_surf] = recent_surface_wins.get(m_surf, 0) + 1
+                        recent_surface_wins[m_surf]  = recent_surface_wins.get(m_surf, 0) + 1
                     recent_total += 1
                     recent_surface_total[m_surf] = recent_surface_total.get(m_surf, 0) + 1
 
@@ -577,7 +613,7 @@ def get_player_data(context, slug: str, display_name: str, page=None) -> dict:
 def _prefetch(context, matches):
     seen, uniq = set(), []
     for m in matches[:50]:
-        for sk, nk in (("slug1","p1"),("slug2","p2")):
+        for sk, nk in (("slug1","p1"), ("slug2","p2")):
             s = (m.get(sk) or "").strip()
             if s and s not in seen:
                 seen.add(s)
@@ -590,7 +626,7 @@ def _prefetch(context, matches):
     if not uniq:
         return
     print(f"[PREFETCH] Warming {len(uniq)} players...")
-    page = context.new_page()
+    page   = context.new_page()
     errors = 0
     try:
         for idx, (slug, name) in enumerate(uniq):
@@ -599,8 +635,8 @@ def _prefetch(context, matches):
                 print("   ♻ Recreating page...")
                 try: page.close()
                 except Exception: pass
-                page    = context.new_page()
-                errors  = 0
+                page   = context.new_page()
+                errors = 0
                 page.wait_for_timeout(6000)
             ok = _safe_goto(page, f"{BASE}/player/{slug}/", context, retries=1)
             if not ok:
@@ -633,26 +669,19 @@ def score_player(data: dict, surface: str, slug: str = "") -> float:
     serve_pct = data.get("serve_win_pct")
     elo_surf  = get_surface_elo(slug, surface) if slug else 1500.0
 
-    # 1. Rank (30%) — rank 1→1.0, rank 500→0.0
     rank_score = max(0.0, 1.0 - rank / 500.0)
 
-    # 2. Surface W/L (25%)
     w = sw.get(surface, 0)
     l = sl.get(surface, 0)
     surf_score = (w / (w + l)) if (w + l) >= 5 else 0.5
 
-    # 3. Recent form (15%) blended with serve stats if available
     form_score = (rw / rt) if rt >= 4 else 0.5
     if serve_pct is not None:
         form_score = form_score * 0.6 + serve_pct * 0.4
 
-    # 4. Surface ELO (15%)
-    elo_score = min(1.0, elo_surf / 2000.0)
-
-    # 5. Momentum / streak (8%)
+    elo_score    = min(1.0, elo_surf / 2000.0)
     streak_score = 0.5 + max(-0.4, min(0.4, streak * 0.08))
 
-    # 6. Fatigue (7%)
     if   days_rest == 0: fatigue_score = 0.30
     elif days_rest == 1: fatigue_score = 0.55
     elif days_rest <= 3: fatigue_score = 0.80
@@ -678,14 +707,13 @@ def h2h_adjustment(prob: float, h2h_wins: int, h2h_total: int) -> float:
 
 
 def odds_blend(model_prob: float, odds_p1, odds_p2) -> tuple:
-    """Blend model 70% + market 30%. Returns (blended_prob, conf_multiplier)."""
     if not odds_p1 or not odds_p2:
         return model_prob, 1.0
-    raw_p1 = 1.0 / odds_p1
-    raw_p2 = 1.0 / odds_p2
-    total  = raw_p1 + raw_p2
+    raw_p1    = 1.0 / odds_p1
+    raw_p2    = 1.0 / odds_p2
+    total     = raw_p1 + raw_p2
     market_p1 = raw_p1 / total
-    gap = abs(model_prob - market_p1)
+    gap       = abs(model_prob - market_p1)
     conf_mult = 0.75 if gap > 0.20 else (0.90 if gap > 0.10 else 1.00)
     return model_prob * 0.70 + market_p1 * 0.30, conf_mult
 
@@ -693,22 +721,108 @@ def odds_blend(model_prob: float, odds_p1, odds_p2) -> tuple:
 def win_prob(s1: float, s2: float) -> float:
     return 1.0 / (1.0 + math.exp(-10.0 * (s1 - s2)))
 
-
 def confidence_pct(prob: float, mult: float = 1.0) -> int:
     return int(min(95, (50 + abs(prob - 0.5) * 180) * mult))
 
-
 def market_edge(model_prob: float, odds) -> float:
-    if not odds or odds <= 1.0:
-        return 0.0
+    if not odds or odds <= 1.0: return 0.0
     return model_prob - (1.0 / odds)
-
 
 def grade(conf: int) -> str:
     return "HIGH" if conf >= 80 else ("MEDIUM" if conf >= 65 else "LOW")
 
 def grade_icon(g: str) -> str:
     return {"HIGH": "🔥", "MEDIUM": "⚡", "LOW": "🌡️"}.get(g, "")
+
+
+# ══════════════════════════════════════════════════════════════
+# EVALUATE MATCHES  (shared by today + tomorrow)
+# ══════════════════════════════════════════════════════════════
+def evaluate_matches(matches: list, context, is_tomorrow: bool = False) -> list:
+    """
+    Run scoring model on a list of matches.
+    Returns picks that pass base filters (conf, gap, odds, edge).
+    Each pick gets is_tomorrow flag for downstream handling.
+    """
+    picks = []
+    tag   = "TOMORROW" if is_tomorrow else "TODAY"
+
+    for m in matches[:30]:
+        try:
+            print(f"\n── [{tag}] {m['p1']} vs {m['p2']}  [{m['surface']}]  {m['tournament']}")
+
+            d1 = get_player_data(context, m["slug1"], m["p1"])
+            d2 = get_player_data(context, m["slug2"], m["p2"])
+
+            s1   = score_player(d1, m["surface"], m["slug1"])
+            s2   = score_player(d2, m["surface"], m["slug2"])
+            prob = win_prob(s1, s2)
+
+            blended, conf_mult = odds_blend(prob, m["odds_p1"], m["odds_p2"])
+            conf = confidence_pct(blended, conf_mult)
+
+            favourite  = m["p1"] if blended > 0.5 else m["p2"]
+            fav_prob   = max(blended, 1 - blended)
+            fav_odds   = m["odds_p1"] if blended > 0.5 else m["odds_p2"]
+            edge       = market_edge(fav_prob, fav_odds)
+            pick_grade = grade(conf)
+
+            print(
+                f"   {m['p1']:22s} rank={d1['rank']:>3}  streak={d1['streak']:+d}"
+                f"  rest={d1['days_rest']}d  score={s1:.3f}\n"
+                f"   {m['p2']:22s} rank={d2['rank']:>3}  streak={d2['streak']:+d}"
+                f"  rest={d2['days_rest']}d  score={s2:.3f}\n"
+                f"   prob={blended:.3f}  conf={conf}%  edge={edge:+.3f}  grade={pick_grade}"
+            )
+
+            # Base filters
+            if conf < 65:
+                print(f"   SKIP: conf {conf}% < 65%"); continue
+            if abs(blended - 0.5) < 0.07:
+                print(f"   SKIP: too close"); continue
+            if not fav_odds:
+                print(f"   SKIP: no odds"); continue
+            if edge < 0.03:
+                print(f"   SKIP: edge {edge:+.3f} < 0.03"); continue
+
+            picks.append({
+                "m": m, "d1": d1, "d2": d2,
+                "s1": s1, "s2": s2,
+                "prob": fav_prob, "conf": conf, "grade": pick_grade,
+                "winner": favourite, "winner_odds": fav_odds,
+                "edge": edge,
+                "streak1": d1.get("streak", 0),
+                "streak2": d2.get("streak", 0),
+                "is_tomorrow": is_tomorrow,
+            })
+
+        except Exception as e:
+            print(f"   ERROR: {e}")
+
+    return picks
+
+
+# ══════════════════════════════════════════════════════════════
+# FORMAT A PICK BLOCK
+# ══════════════════════════════════════════════════════════════
+def format_pick(pk: dict) -> str:
+    m        = pk["m"]
+    icon     = grade_icon(pk["grade"])
+    odds_str = f" @ {pk['winner_odds']}" if pk["winner_odds"] else ""
+    bar      = "█" * (pk["conf"] // 10) + "░" * (10 - pk["conf"] // 10)
+    rnd      = f"  · {m['round']}" if m.get("round") else ""
+    tmr      = "  📅 TOMORROW" if pk.get("is_tomorrow") else ""
+    return (
+        f"─────────────────────────\n"
+        f"🏟  {m['tournament']}  ({m['surface'].title()}){rnd}{tmr}\n"
+        f"⚔️  {m['p1']} vs {m['p2']}\n"
+        f"{icon} {pk['grade']}  ✅  {pk['winner']}{odds_str}\n"
+        f"[{bar}] {pk['conf']}%\n"
+        f"Ranks: #{pk['d1']['rank']} vs #{pk['d2']['rank']}\n"
+        f"Scores: {pk['s1']:.2f} vs {pk['s2']:.2f}\n"
+        f"Streak: {pk['streak1']:+d} vs {pk['streak2']:+d}\n"
+        f"Edge: {pk['edge']:+.2f}  ⏰ {m['time']}\n"
+    )
 
 
 # ══════════════════════════════════════════════════════════════
@@ -719,83 +833,46 @@ def run():
     pw, browser, context = launch()
 
     try:
-        matches = get_today_matches(context)
-        if not matches:
-            print("❌ No matches found.")
+        # ── TODAY ────────────────────────────────────────────
+        today_matches = get_matches(context, day="today", label="TODAY")
+        if not today_matches:
+            print("❌ No matches found today.")
             send_telegram("No WTA matches found today.")
             return
 
-        _prefetch(context, matches)
+        _prefetch(context, today_matches)
+        today_picks_raw = evaluate_matches(today_matches, context, is_tomorrow=False)
+        today_picks     = apply_mode_filters(today_picks_raw)
+        today_picks.sort(key=lambda x: x["conf"], reverse=True)
 
-        picks = []
-        for m in matches[:30]:
-            try:
-                print(f"\n── {m['p1']} vs {m['p2']}  [{m['surface']}]  {m['tournament']}")
+        # ── TOMORROW FALLBACK ─────────────────────────────────
+        # Fetch tomorrow if today has fewer than TOMORROW_THRESHOLD HIGH picks
+        tomorrow_picks = []
+        if len(today_picks) < TOMORROW_THRESHOLD:
+            print(f"\n[FALLBACK] Only {len(today_picks)} today picks — fetching tomorrow...")
+            tmr_matches = get_matches(context, day="1", label="TOMORROW")
 
-                d1 = get_player_data(context, m["slug1"], m["p1"])
-                d2 = get_player_data(context, m["slug2"], m["p2"])
+            if tmr_matches:
+                # Prefetch only players not already cached
+                new_tmr = [m for m in tmr_matches
+                           if m["slug1"] not in _player_cache
+                           or m["slug2"] not in _player_cache]
+                if new_tmr:
+                    _prefetch(context, new_tmr)
 
-                s1   = score_player(d1, m["surface"], m["slug1"])
-                s2   = score_player(d2, m["surface"], m["slug2"])
-                prob = win_prob(s1, s2)
+                tmr_picks_raw = evaluate_matches(tmr_matches, context, is_tomorrow=True)
+                # Tomorrow picks: HIGH filter only — no dedup (always fresh)
+                tomorrow_picks = [pk for pk in tmr_picks_raw if pk.get("grade") == "HIGH"]
+                tomorrow_picks.sort(key=lambda x: x["conf"], reverse=True)
+                print(f"[FALLBACK] {len(tomorrow_picks)} tomorrow HIGH picks found")
 
-                h2h_key    = f"{min(m['slug1'],m['slug2'])}_{max(m['slug1'],m['slug2'])}"
-                h2h_w, h2h_t = _h2h_cache.get(h2h_key, (0, 0))
-                prob = h2h_adjustment(prob, h2h_w, h2h_t)
+        # ── SEND ──────────────────────────────────────────────
+        all_picks = today_picks[:6] + tomorrow_picks[:3]
 
-                blended, conf_mult = odds_blend(prob, m["odds_p1"], m["odds_p2"])
-                conf = confidence_pct(blended, conf_mult)
-
-                favourite  = m["p1"] if blended > 0.5 else m["p2"]
-                fav_prob   = max(blended, 1 - blended)
-                fav_odds   = m["odds_p1"] if blended > 0.5 else m["odds_p2"]
-                edge       = market_edge(fav_prob, fav_odds)
-                pick_grade = grade(conf)
-
-                print(
-                    f"   {m['p1']:22s} rank={d1['rank']:>3}  streak={d1['streak']:+d}"
-                    f"  rest={d1['days_rest']}d  score={s1:.3f}\n"
-                    f"   {m['p2']:22s} rank={d2['rank']:>3}  streak={d2['streak']:+d}"
-                    f"  rest={d2['days_rest']}d  score={s2:.3f}\n"
-                    f"   prob={blended:.3f}  conf={conf}%  edge={edge:+.3f}  grade={pick_grade}"
-                )
-
-                # Base filters — always applied before mode filters
-                if conf < 65:
-                    print(f"   SKIP: conf {conf}% < 65%")
-                    continue
-                if abs(blended - 0.5) < 0.07:
-                    print(f"   SKIP: too close")
-                    continue
-                if not fav_odds:
-                    print(f"   SKIP: no odds")
-                    continue
-                if edge < 0.03:
-                    print(f"   SKIP: edge {edge:+.3f} < 0.03")
-                    continue
-
-                picks.append({
-                    "m": m, "d1": d1, "d2": d2,
-                    "s1": s1, "s2": s2,
-                    "prob": fav_prob, "conf": conf, "grade": pick_grade,
-                    "winner": favourite, "winner_odds": fav_odds,
-                    "edge": edge,
-                    "streak1": d1.get("streak", 0),
-                    "streak2": d2.get("streak", 0),
-                })
-
-            except Exception as e:
-                print(f"   ERROR: {e}")
-
-        # ── Apply mode filters (dedup + grade) ────────────────
-        picks = apply_mode_filters(picks)
-        picks.sort(key=lambda x: x["conf"], reverse=True)
-
-        if not picks:
+        if not all_picks:
             print(f"[{RUN_MODE.upper()}] No qualifying picks.")
-            return   # silent — don't spam Telegram
+            return   # silent
 
-        # ── Build message ─────────────────────────────────────
         mode_label = {
             "normal":      "",
             "daily_reset": "🌅 Daily Signals  ",
@@ -803,25 +880,20 @@ def run():
         }.get(RUN_MODE, "")
 
         today_str = datetime.now(WAT).strftime("%A %d %B %Y")
-        lines = [f"🎾 WTA ENGINE v7  {mode_label}\n📅 {today_str}\n"]
+        lines     = [f"🎾 WTA ENGINE v7  {mode_label}\n📅 {today_str}\n"]
 
-        for pk in picks[:6]:
-            m        = pk["m"]
-            icon     = grade_icon(pk["grade"])
-            odds_str = f" @ {pk['winner_odds']}" if pk["winner_odds"] else ""
-            bar      = "█" * (pk["conf"] // 10) + "░" * (10 - pk["conf"] // 10)
-            rnd      = f"  · {m['round']}" if m.get("round") else ""
-            lines.append(
-                f"─────────────────────────\n"
-                f"🏟  {m['tournament']}  ({m['surface'].title()}){rnd}\n"
-                f"⚔️  {m['p1']} vs {m['p2']}\n"
-                f"{icon} {pk['grade']}  ✅  {pk['winner']}{odds_str}\n"
-                f"[{bar}] {pk['conf']}%\n"
-                f"Ranks: #{pk['d1']['rank']} vs #{pk['d2']['rank']}\n"
-                f"Scores: {pk['s1']:.2f} vs {pk['s2']:.2f}\n"
-                f"Streak: {pk['streak1']:+d} vs {pk['streak2']:+d}\n"
-                f"Edge: {pk['edge']:+.2f}  ⏰ {m['time']}\n"
-            )
+        # Section header if we have both today + tomorrow
+        has_today    = any(not pk["is_tomorrow"] for pk in all_picks)
+        has_tomorrow = any(pk["is_tomorrow"]     for pk in all_picks)
+
+        if has_today and has_tomorrow:
+            lines.append("━━━ TODAY ━━━\n")
+
+        for pk in all_picks:
+            if has_today and has_tomorrow and pk["is_tomorrow"] and \
+               not all_picks[all_picks.index(pk)-1]["is_tomorrow"]:
+                lines.append("\n━━━ TOMORROW (preview) ━━━\n")
+            lines.append(format_pick(pk))
 
         sent_time = datetime.now(WAT).strftime("%H:%M WAT")
         lines.append(f"⚠️ For entertainment only.\n🕐 {sent_time}")
@@ -829,8 +901,9 @@ def run():
         print("\n" + msg)
         send_telegram(msg)
 
+        # Only mark TODAY picks as sent — tomorrow picks stay fresh
         if should_mark_sent():
-            mark_as_sent(picks[:6])
+            mark_as_sent(all_picks)   # mark_as_sent skips is_tomorrow=True picks
 
     finally:
         browser.close()
