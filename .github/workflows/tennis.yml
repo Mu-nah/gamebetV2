@@ -1,42 +1,56 @@
 name: WTA Prediction Bot
 
+# ─────────────────────────────────────────────────────────────
+# SCHEDULE  (UTC — WAT is UTC+1)
+#
+#  00:00 UTC = 01:00 WAT  ← DAILY RESET (dedup ignored, all HIGH picks sent)
+#  03:00 UTC = 04:00 WAT
+#  06:00 UTC = 07:00 WAT
+#  09:00 UTC = 10:00 WAT
+#  12:00 UTC = 13:00 WAT
+#  15:00 UTC = 16:00 WAT
+#  18:00 UTC = 19:00 WAT
+#  21:00 UTC = 22:00 WAT
+# ─────────────────────────────────────────────────────────────
 on:
   schedule:
-    # WAT = UTC+1. All times below are UTC (subtract 1hr for WAT)
-    # 1:00 WAT  = 00:00 UTC
-    # 3:00 WAT  = 02:00 UTC
-    # 5:00 WAT  = 04:00 UTC
-    # 7:00 WAT  = 06:00 UTC
-    # 9:00 WAT  = 08:00 UTC
-    # 11:00 WAT = 10:00 UTC
-    # 13:00 WAT = 12:00 UTC
-    # 15:00 WAT = 14:00 UTC
-    # 17:00 WAT = 16:00 UTC
-    # 19:00 WAT = 18:00 UTC
-    # 21:00 WAT = 20:00 UTC
-    # 23:00 WAT = 22:00 UTC
-    - cron: '0 0 * * *'
-    - cron: '0 2 * * *'
-    - cron: '0 4 * * *'
-    - cron: '0 6 * * *'
-    - cron: '0 8 * * *'
-    - cron: '0 10 * * *'
-    - cron: '0 12 * * *'
-    - cron: '0 14 * * *'
-    - cron: '0 16 * * *'
-    - cron: '0 18 * * *'
-    - cron: '0 20 * * *'
-    - cron: '0 22 * * *'
+    - cron: '0 0 * * *'    # 01:00 WAT — daily reset
+    - cron: '0 3 * * *'    # 04:00 WAT
+    - cron: '0 6 * * *'    # 07:00 WAT
+    - cron: '0 9 * * *'    # 10:00 WAT
+    - cron: '0 12 * * *'   # 13:00 WAT
+    - cron: '0 15 * * *'   # 16:00 WAT
+    - cron: '0 18 * * *'   # 19:00 WAT
+    - cron: '0 21 * * *'   # 22:00 WAT
 
-  # Allow manual trigger from GitHub Actions UI
-  workflow_dispatch:
+  workflow_dispatch:   # Manual trigger — sends all HIGH picks regardless of dedup
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
-    timeout-minutes: 20       # kill if it hangs (e.g. playwright blocked)
+    timeout-minutes: 20
 
     steps:
+      # ── MUST be first — cache key depends on this ────────────────────────
+      - name: Set TODAY
+        run: echo "TODAY=$(date -u +%Y-%m-%d)" >> $GITHUB_ENV
+
+      # ── Decide RUN_MODE ──────────────────────────────────────────────────
+      - name: Set RUN_MODE
+        run: |
+          HOUR=$(date -u +%H)
+          EVENT="${{ github.event_name }}"
+          if   [ "$EVENT" = "workflow_dispatch" ]; then
+            echo "RUN_MODE=force"        >> $GITHUB_ENV
+            echo "▶ force  (manual trigger)"
+          elif [ "$HOUR"  = "00" ]; then
+            echo "RUN_MODE=daily_reset"  >> $GITHUB_ENV
+            echo "▶ daily_reset  (01:00 WAT)"
+          else
+            echo "RUN_MODE=normal"       >> $GITHUB_ENV
+            echo "▶ normal  (UTC hour=$HOUR)"
+          fi
+
       - name: Checkout repo
         uses: actions/checkout@v4
 
@@ -45,13 +59,12 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Cache pip dependencies
+      - name: Cache pip
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-pip-
+          restore-keys: ${{ runner.os }}-pip-
 
       - name: Install dependencies
         run: |
@@ -59,29 +72,24 @@ jobs:
           playwright install chromium
           playwright install-deps chromium
 
+      # ── Date-scoped cache — auto-resets each day ─────────────────────────
       - name: Restore sent_matches cache
         uses: actions/cache@v4
         with:
           path: sent_matches.json
-          # Key includes date so cache is fresh each day
           key: sent-matches-${{ env.TODAY }}
-          restore-keys: |
-            sent-matches-
-        env:
-          TODAY: ${{ env.TODAY }}
+          restore-keys: sent-matches-
 
-      - name: Set today date env var
-        run: echo "TODAY=$(date -u +%Y-%m-%d)" >> $GITHUB_ENV
-
-      - name: Run WTA bot
+      - name: Run bot
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
           CHAT_ID:   ${{ secrets.CHAT_ID }}
+          RUN_MODE:  ${{ env.RUN_MODE }}
         run: python predictor.py
 
       - name: Save sent_matches cache
+        if: always()
         uses: actions/cache@v4
-        if: always()     # save even if bot found no picks
         with:
           path: sent_matches.json
           key: sent-matches-${{ env.TODAY }}
