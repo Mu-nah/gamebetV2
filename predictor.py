@@ -59,8 +59,8 @@ try:
 except ImportError:
     pass  # dotenv not installed — set env vars manually
 
-BOT_TOKEN = os.getenv("BOT_TOKEN", "Y7205717351:AAG4fFg2O5qpMPjF6gFm8YrWdGDpVtJUSy4")
-CHAT_ID   = os.getenv("CHAT_ID", "6684941670")
+BOT_TOKEN = os.getenv("BOT_TOKEN", "")
+CHAT_ID   = os.getenv("CHAT_ID", "")
 
 PREFETCH_DELAY_MS = 1200   # raised from 300 — prevents rate limiting
 PREFETCH_LIMIT     = 20      # max unique players to prefetch
