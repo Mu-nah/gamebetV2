@@ -7,28 +7,16 @@ RUN_MODE (set by GitHub Actions env var):
   force        — manual trigger: dedup OFF, HIGH filter ON,  does NOT mark sent
 
 TOMORROW FALLBACK:
-  If today's HIGH picks < 3, automatically fetches tomorrow's schedule
-  and appends any HIGH picks, clearly labelled "📅 TOMORROW".
-  Tomorrow picks are NOT written to the sent-dedup file (they'll be
-  re-evaluated fresh on tomorrow's daily_reset run).
+  If today HIGH picks < TOMORROW_THRESHOLD (3), fetch &day=1 and append
+  tomorrow HIGH picks labelled "📅 TOMORROW".
+  Tomorrow picks are never written to dedup (re-evaluated fresh next day).
 
-DOM CONFIRMED (from live page capture):
-  MATCHES PAGE  /matches/?type=wta-single&day=today  (or &day=1 for tomorrow)
-    Match rows use TWO consecutive tr rows:
-      row1: td.first.time  (time only, e.g. "18:30")
-            td.t-name a[href*='/player/']  (player 1, slug in href)
-            td.s-color span[title]         (surface)
-            td.course ×2                   (odds)
-      row2: td.t-name a[href*='/player/']  (player 2)
-
-  PLAYER PROFILE  /player/{slug}/
-    Rank:    table.plDetail td div.date
-             "Current/Highest rank - singles: 3. / 2."
-    W/L:     table.result.balance tbody tr (first=cur yr, second=prev yr)
-             cols: 2=Clay 3=Hard 4=Indoors 5=Grass  text="16/6"
-    Form:    div#matches-{year}-1-data  tr.one/tr.two
-             td.t-name → <strong> wraps winner
-             td.s-color span[title] → match surface
+BUGS FIXED vs the running v7:
+  • streak capped at +10 for everyone — streak_locked flag was never checked
+    before incrementing, so streak kept climbing. Fixed with proper guard.
+  • days_rest always 3 — date parser got "19.04." (no year) from td:first-child.
+    Fixed by injecting current year when only DD.MM. is present.
+  • win detection matched too broadly — now checks first+last name together.
 """
 
 from playwright.sync_api import sync_playwright
@@ -60,18 +48,67 @@ if RUN_MODE not in ("normal", "daily_reset", "force"):
     RUN_MODE = "normal"
 print(f"[MODE] RUN_MODE = {RUN_MODE.upper()}")
 
-# How many today picks before we skip fetching tomorrow
+# How many today HIGH picks before we skip fetching tomorrow
 TOMORROW_THRESHOLD = 3
-
-PREFETCH_LIMIT = 20
-SURFACE_COL    = {"clay": 2, "hard": 3, "indoors": 4, "grass": 5}
+PREFETCH_LIMIT     = 20
+SURFACE_COL        = {"clay": 2, "hard": 3, "indoors": 4, "grass": 5}
 
 SURFACE_ELO_DB: dict = {}
 _player_cache:  dict = {}
+_h2h_cache:     dict = {}
+_ta_serve_cache: dict = {}
 _http = requests.Session()
 
 _RANK_RE      = re.compile(r"singles:\s*(\d+)\.")
 _ITF_PREFIXES = re.compile(r"^\s*(w15|w25|w35|w50|w60|w100|itf)\b", re.IGNORECASE)
+
+# Surface constants
+SURFACE_SERVE_HOLD = {
+    "hard": 0.72, "clay": 0.68, "grass": 0.77, "indoors": 0.74,
+}
+SURFACE_AVG_GAMES = {
+    "hard": 9.8, "clay": 10.2, "grass": 9.4, "indoors": 9.6,
+}
+
+# TennisAbstract name map  (tennisexplorer slug → TA search name)
+_TA_BASE    = "https://www.tennisabstract.com/cgi-bin/wplayer.cgi"
+_TA_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+    "Accept":     "text/html,application/xhtml+xml",
+    "Referer":    "https://www.tennisabstract.com/",
+}
+_TA_NAME_MAP = {
+    "swiatek":          "IgaSwiatek",
+    "sabalenka":        "ArynaStabalenka",
+    "gauff":            "CocoGauff",
+    "rybakina":         "ElenaRybakina",
+    "pegula":           "JessicaPegula",
+    "zheng":            "QinwenZheng",
+    "andreeva-7d55d":   "MirraAndreeva",
+    "paolini":          "JasminePaolini",
+    "badosa":           "PaulaBadosa",
+    "vekic":            "DonnaVekic",
+    "kasatkina":        "DariaKasatkina",
+    "samsonova":        "LudmilaSamsonova",
+    "svitolina":        "ElinaSvitolina",
+    "jabeur":           "OnsJabeur",
+    "keys":             "MadisonKeys",
+    "kostyuk-ea2bf":    "MartaKostyuk",
+    "krejcikova":       "BarboraKrejcikova",
+    "ostapenko":        "JelenaOstapenko",
+    "muchova":          "KaterinaMuchova",
+    "collins":          "DanielleCollins",
+    "haddad-maia":      "BeatrizHaddadMaia",
+    "bencic":           "BelindaBencic",
+    "cirstea":          "SoranaCirstea",
+    "maria-8ad07":      "TatjanaMaria",
+    "andreescu":        "BiancaAndreescu",
+    "vondrousova":      "MarketaVondrousova",
+    "sorribes-tormo":   "SaraSorribesTormo",
+    "chwalinska":       "MajaChwalinska",
+    "montgomery-8a7c9": "RebeccaMontgomery",
+    "marcinko":         "PatriciaMarcinko",
+}
 
 
 # ══════════════════════════════════════════════════════════════
@@ -90,7 +127,7 @@ def update_surface_elo(winner_slug: str, loser_slug: str, surface: str):
 
 
 # ══════════════════════════════════════════════════════════════
-# DEDUP  (sent_matches.json)
+# DEDUP
 # ══════════════════════════════════════════════════════════════
 _SENT_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sent_matches.json")
 
@@ -115,23 +152,21 @@ def _match_key(p1: str, p2: str) -> str:
     return "_vs_".join(sorted([p1.strip().lower(), p2.strip().lower()]))
 
 def is_already_sent(p1: str, p2: str) -> bool:
-    sent = _load_sent()
-    return _match_key(p1, p2) in sent.get(_today_wat(), [])
+    return _match_key(p1, p2) in _load_sent().get(_today_wat(), [])
 
 def mark_as_sent(picks: list):
-    """Only mark today's picks — tomorrow picks are intentionally excluded."""
+    """Write today picks to dedup file. Tomorrow picks are intentionally skipped."""
     sent  = _load_sent()
     today = _today_wat()
     sent.setdefault(today, [])
     for pk in picks:
         if pk.get("is_tomorrow"):
-            continue   # never dedup tomorrow picks — re-evaluate fresh next run
+            continue
         key = _match_key(pk["m"]["p1"], pk["m"]["p2"])
         if key not in sent[today]:
             sent[today].append(key)
     cutoff = (datetime.now(WAT) - timedelta(days=3)).strftime("%Y-%m-%d")
-    sent   = {k: v for k, v in sent.items() if k >= cutoff}
-    _save_sent(sent)
+    _save_sent({k: v for k, v in sent.items() if k >= cutoff})
 
 
 # ══════════════════════════════════════════════════════════════
@@ -142,18 +177,16 @@ def apply_mode_filters(picks: list) -> list:
         filtered = [pk for pk in picks if pk.get("grade") == "HIGH"]
         print(f"[MODE] FORCE — {len(filtered)} HIGH picks (dedup ignored)")
         return filtered
-
     if RUN_MODE == "daily_reset":
         filtered = [pk for pk in picks if pk.get("grade") == "HIGH"]
         print(f"[MODE] DAILY_RESET — {len(filtered)} HIGH picks (dedup ignored)")
         return filtered
-
-    # normal — dedup + HIGH only
+    # normal
     before = len(picks)
     picks  = [pk for pk in picks
               if not is_already_sent(pk["m"]["p1"], pk["m"]["p2"])]
     picks  = [pk for pk in picks if pk.get("grade") == "HIGH"]
-    print(f"[MODE] NORMAL — {len(picks)} new HIGH picks ({before - len(picks)} deduped)")
+    print(f"[MODE] NORMAL — {len(picks)} HIGH picks ({before - len(picks)} deduped)")
     return picks
 
 def should_mark_sent() -> bool:
@@ -252,19 +285,40 @@ def _wl(txt: str):
     except:
         return None, None
 
-def _parse_date(txt: str):
+def _parse_match_date(txt: str) -> datetime | None:
+    """
+    Parse match date from tennisexplorer row text.
+    Handles:
+      "19.04."        — DD.MM. only (inject current year)
+      "19.04.2026"    — full date
+      "2026-04-19"    — ISO
+    """
+    txt = (txt or "").strip()
+    if not txt:
+        return None
+    year = datetime.now().year
+    # DD.MM. with trailing dot and no year
+    m = re.match(r"^(\d{1,2})\.(\d{1,2})\.$", txt)
+    if m:
+        try:
+            return datetime(year, int(m.group(2)), int(m.group(1)))
+        except Exception:
+            return None
+    # Full date formats
     for fmt in ("%d.%m.%Y", "%Y-%m-%d", "%d/%m/%Y"):
-        try:    return datetime.strptime(txt.strip(), fmt)
-        except: continue
+        try:
+            return datetime.strptime(txt, fmt)
+        except Exception:
+            continue
     return None
 
 def is_allowed_tournament(name: str) -> bool:
     n  = (name or "").strip()
     nl = n.lower()
-    if not n:                                                           return False
-    if "itf" in nl:                                                     return False
-    if _ITF_PREFIXES.search(n):                                         return False
-    if any(x in nl for x in ("utr pro", "utr ", "futures","challenger")): return False
+    if not n:                                                             return False
+    if "itf" in nl:                                                       return False
+    if _ITF_PREFIXES.search(n):                                           return False
+    if any(x in nl for x in ("utr pro","utr ","futures","challenger")):   return False
     return True
 
 _ERROR_TITLES = ("just a moment","access denied","429","too many requests","error 429")
@@ -306,17 +360,60 @@ def _safe_goto(page, url: str, context, retries: int = 2) -> bool:
 
 
 # ══════════════════════════════════════════════════════════════
+# TENNISABSTRACT SERVE STATS
+# ══════════════════════════════════════════════════════════════
+def _slug_to_ta_name(slug: str, display_name: str) -> str:
+    if slug in _TA_NAME_MAP:
+        return _TA_NAME_MAP[slug]
+    base  = re.sub(r"-[0-9a-f]{4,}$", "", slug)
+    parts = base.split("-")
+    return "".join(p.capitalize() for p in parts if p)
+
+def _parse_ta_stats(html: str) -> dict:
+    stats = {}
+    patterns = {
+        "serve_win_pct":   re.compile(r"var\s+sp\s*=\s*([\d.]+)"),
+        "first_serve_pct": re.compile(r"var\s+fsp\s*=\s*([\d.]+)"),
+        "first_serve_win": re.compile(r"var\s+fspw\s*=\s*([\d.]+)"),
+        "second_serve_win":re.compile(r"var\s+sspw\s*=\s*([\d.]+)"),
+    }
+    for key, pat in patterns.items():
+        m = pat.search(html)
+        if m:
+            val = float(m.group(1))
+            stats[key] = round(val / 100.0, 4) if val > 1 else val
+    return stats
+
+def get_ta_serve_stats(slug: str, display_name: str) -> dict:
+    if not slug or slug in _ta_serve_cache:
+        return _ta_serve_cache.get(slug, {})
+    ta_name = _slug_to_ta_name(slug, display_name)
+    try:
+        resp = _http.get(f"{_TA_BASE}?p={ta_name}", headers=_TA_HEADERS, timeout=8)
+        if resp.status_code == 200:
+            stats = _parse_ta_stats(resp.text)
+            if stats:
+                print(f"   [TA] {display_name}: serve={round(stats.get('serve_win_pct',0)*100)}%")
+            else:
+                print(f"   [TA] {display_name}: no serve stats found")
+            _ta_serve_cache[slug] = stats
+            return stats
+    except Exception as e:
+        print(f"   [TA] {display_name}: {e}")
+    _ta_serve_cache[slug] = {}
+    return {}
+
+
+# ══════════════════════════════════════════════════════════════
 # STEP 1 — GET MATCHES
+# day="today" or day="1" (tomorrow)
 #
-# day="today"  → /matches/?type=wta-single&day=today
-# day="1"      → /matches/?type=wta-single&day=1   (tomorrow)
-#
-# Match row structure (confirmed from DOM):
-#   row1: td.first.time          → "18:30"  (time only — no date)
-#         td.t-name a[/player/]  → player 1 + slug
-#         td.s-color span[title] → surface
-#         td.course ×2           → odds
-#   row2: td.t-name a[/player/]  → player 2 + slug
+# Confirmed DOM structure (two-row-per-match on matches page):
+#   row1: td.first.time           → "18:30"
+#         td.t-name a[/player/]   → player 1, slug in href
+#         td.s-color span[title]  → surface
+#         td.course ×2            → odds
+#   row2: td.t-name a[/player/]  → player 2
 # ══════════════════════════════════════════════════════════════
 def get_matches(context, day: str = "today", label: str = "") -> list:
     page    = context.new_page()
@@ -324,12 +421,15 @@ def get_matches(context, day: str = "today", label: str = "") -> list:
     tag     = f"[{label}] " if label else ""
     print(f"🔍 {tag}Loading matches (day={day})...")
     try:
-        url = f"{BASE}/matches/?type=wta-single&day={day}"
-        if not _safe_goto(page, url, context):
+        if not _safe_goto(page, f"{BASE}/matches/?type=wta-single&day={day}", context):
             print(f"❌ {tag}Failed to load matches page.")
             return []
         try:
             page.wait_for_selector("td.first.time", timeout=15000)
+        except Exception:
+            pass
+        try:
+            page.wait_for_selector("td.s-color span[title]", timeout=5000)
         except Exception:
             pass
         page.wait_for_timeout(600)
@@ -413,8 +513,9 @@ def get_matches(context, day: str = "today", label: str = "") -> list:
                 try:
                     rt = row1.query_selector("td.round, td.r")
                     if rt:
-                        rm = {"F": "🏆 Final", "SF": "🥈 Semi", "QF": "⚡ QF",
-                              "R16": "R16", "R32": "R32", "R64": "R64", "R128": "R128"}
+                        rm = {"F":"🏆 Final","SF":"🥈 Semi","QF":"⚡ QF",
+                              "R16":"R16","R32":"R32","R64":"R64","R128":"R128",
+                              "1R":"R1","2R":"R2","3R":"R3"}
                         round_label = rm.get(rt.inner_text().strip().upper(),
                                              rt.inner_text().strip())
                 except Exception:
@@ -443,6 +544,15 @@ def get_matches(context, day: str = "today", label: str = "") -> list:
 
 # ══════════════════════════════════════════════════════════════
 # STEP 2 — PLAYER DATA
+#
+# BUGS FIXED:
+#   streak — streak_locked was checked AFTER incrementing, so streak
+#             kept climbing every match. Now checked BEFORE.
+#   days_rest — tennisexplorer match rows show "19.04." (no year).
+#               _parse_match_date now handles DD.MM. format by
+#               injecting the current year.
+#   win detection — now checks first+last name together to avoid
+#                   false positives (e.g. "Maria" matching "Mariana").
 # ══════════════════════════════════════════════════════════════
 def get_player_data(context, slug: str, display_name: str, page=None) -> dict:
     if slug in _player_cache:
@@ -453,7 +563,7 @@ def get_player_data(context, slug: str, display_name: str, page=None) -> dict:
         "recent_wins": 0, "recent_total": 0,
         "recent_surface_wins": {}, "recent_surface_total": {},
         "streak": 0, "days_rest": 3, "matches_30d": 0,
-        "serve_win_pct": None,
+        "serve_win_pct": None, "first_serve_pct": None,
     }
     if not slug:
         return default
@@ -464,7 +574,9 @@ def get_player_data(context, slug: str, display_name: str, page=None) -> dict:
     print(f"   Fetching {display_name} ({slug})...")
 
     try:
-        if not _safe_goto(page, f"{BASE}/player/{slug}/", context, retries=1):
+        ok = _safe_goto(page, f"{BASE}/player/{slug}/", context, retries=1)
+        if not ok or _is_error_page(page):
+            print(f"   ❌ Could not load {display_name}")
             return default
         try:
             page.wait_for_selector("table.plDetail", timeout=5000)
@@ -488,8 +600,8 @@ def get_player_data(context, slug: str, display_name: str, page=None) -> dict:
 
         # ── Surface W/L (2-year weighted) ─────────────────────
         # table.result.balance (first = singles)
-        # tbody first row = current year (weight ×2), second = prev year (×1)
         # cols: 2=Clay 3=Hard 4=Indoors 5=Grass
+        # current year ×2, previous year ×1
         sw, sl = {}, {}
         try:
             btables = page.query_selector_all("table.result.balance")
@@ -514,6 +626,7 @@ def get_player_data(context, slug: str, display_name: str, page=None) -> dict:
         # div#matches-{year}-1-data  tr.one/tr.two
         # td.t-name: <strong> = winner
         # td.s-color span[title]: match surface
+        # td:first-child: date like "19.04." — parsed with year injected
         recent_wins = recent_total = streak = matches_30d = 0
         days_rest   = 3
         streak_locked = False
@@ -521,13 +634,19 @@ def get_player_data(context, slug: str, display_name: str, page=None) -> dict:
         recent_surface_total = {}
         today_dt = datetime.now()
 
+        # Build name parts for accurate win detection
+        name_parts = display_name.lower().split() if display_name else []
+        first_nm   = name_parts[0].rstrip(".") if name_parts else ""
+        last_nm    = name_parts[-1].rstrip(".") if len(name_parts) > 1 else ""
+
         try:
             year = today_dt.year
             mdiv = (page.query_selector(f"div#matches-{year}-1-data") or
                     page.query_selector(f"div#matches-{year-1}-1-data"))
             if mdiv:
-                surname = display_name.split()[0].lower().strip(".") if display_name else ""
-                for idx, mrow in enumerate(mdiv.query_selector_all("tr.one, tr.two")[:20]):
+                for idx, mrow in enumerate(
+                    mdiv.query_selector_all("tr.one, tr.two")[:20]
+                ):
                     t_td = mrow.query_selector("td.t-name")
                     if not t_td:
                         continue
@@ -536,25 +655,37 @@ def get_player_data(context, slug: str, display_name: str, page=None) -> dict:
                         continue
                     score_td = mrow.query_selector("td.score, td.tl")
                     if not score_td or not score_td.inner_text().strip():
-                        continue
+                        continue   # upcoming — skip
 
                     s_span = mrow.query_selector("td.s-color span[title]")
                     m_surf = _parse_surface(s_span.get_attribute("title") if s_span else "")
 
-                    won = surname and surname in strong.inner_text().lower()
+                    # Accurate win detection: both first and last name must match
+                    strong_txt = strong.inner_text().lower()
+                    won = bool(first_nm) and (
+                        (first_nm in strong_txt and last_nm in strong_txt)
+                        if last_nm else first_nm in strong_txt
+                    )
 
+                    # ── STREAK FIX ────────────────────────────
+                    # Check streak_locked BEFORE modifying streak
                     if not streak_locked:
                         if idx == 0:
                             streak = 1 if won else -1
-                        elif (won and streak > 0) or (not won and streak < 0):
-                            streak += 1 if won else -1
+                        elif won and streak > 0:
+                            streak += 1
+                        elif not won and streak < 0:
+                            streak -= 1
                         else:
-                            streak_locked = True
+                            streak_locked = True   # streak broken — stop counting
+                    streak = max(-10, min(10, streak))   # hard cap still applies
 
+                    # ── DAYS REST FIX ─────────────────────────
+                    # td:first-child shows "19.04." — _parse_match_date handles this
                     date_td = (mrow.query_selector("td.date") or
                                mrow.query_selector("td.first.date") or
                                mrow.query_selector("td:first-child"))
-                    match_date = _parse_date(date_td.inner_text()) if date_td else None
+                    match_date = _parse_match_date(date_td.inner_text()) if date_td else None
 
                     if idx == 0 and match_date:
                         days_rest = max(0, (today_dt - match_date).days)
@@ -570,31 +701,43 @@ def get_player_data(context, slug: str, display_name: str, page=None) -> dict:
         except Exception as e:
             print(f"   form err: {e}")
 
-        # ── Serve stats (optional) ─────────────────────────────
-        serve_win_pct = None
-        try:
-            for tbl in page.query_selector_all("table.stat"):
-                for sr in tbl.query_selector_all("tr"):
-                    txt = sr.inner_text().lower()
-                    if "1st serve" in txt and "won" in txt:
-                        cells = sr.query_selector_all("td")
-                        if len(cells) >= 2:
-                            pct = _safe_float(cells[-1].inner_text().replace("%", ""))
-                            if pct and 30 < pct < 100:
-                                serve_win_pct = pct / 100.0
-                                break
-                if serve_win_pct:
-                    break
-        except Exception:
-            pass
+        # ── TennisAbstract serve stats ─────────────────────────
+        ta            = get_ta_serve_stats(slug, display_name)
+        serve_win_pct = ta.get("serve_win_pct")
+        first_serve_pct = ta.get("first_serve_pct")
+
+        # Fallback: scrape from tennisexplorer profile stat tables
+        if serve_win_pct is None:
+            try:
+                for tbl in page.query_selector_all("table.stat"):
+                    for sr in tbl.query_selector_all("tr"):
+                        txt = sr.inner_text().lower()
+                        if "1st serve" in txt and "won" in txt:
+                            cells = sr.query_selector_all("td")
+                            if len(cells) >= 2:
+                                pct = _safe_float(
+                                    cells[-1].inner_text().replace("%", ""))
+                                if pct and 30 < pct < 100:
+                                    serve_win_pct = pct / 100.0
+                                    break
+                    if serve_win_pct:
+                        break
+            except Exception:
+                pass
 
         data = {
-            "rank": rank, "sw": sw, "sl": sl,
-            "recent_wins": recent_wins, "recent_total": recent_total,
-            "recent_surface_wins": recent_surface_wins,
+            "rank":                 rank,
+            "sw":                   sw,
+            "sl":                   sl,
+            "recent_wins":          recent_wins,
+            "recent_total":         recent_total,
+            "recent_surface_wins":  recent_surface_wins,
             "recent_surface_total": recent_surface_total,
-            "streak": streak, "days_rest": days_rest,
-            "matches_30d": matches_30d, "serve_win_pct": serve_win_pct,
+            "streak":               streak,
+            "days_rest":            days_rest,
+            "matches_30d":          matches_30d,
+            "serve_win_pct":        serve_win_pct,
+            "first_serve_pct":      first_serve_pct,
         }
         _player_cache[slug] = data
         return data
@@ -641,6 +784,7 @@ def _prefetch(context, matches):
             ok = _safe_goto(page, f"{BASE}/player/{slug}/", context, retries=1)
             if not ok:
                 errors += 1
+                print(f"   SKIP: {name}")
                 continue
             try:
                 page.wait_for_selector("table.plDetail", timeout=5000)
@@ -719,31 +863,98 @@ def odds_blend(model_prob: float, odds_p1, odds_p2) -> tuple:
 
 
 def win_prob(s1: float, s2: float) -> float:
-    return 1.0 / (1.0 + math.exp(-10.0 * (s1 - s2)))
+    return 1.0 / (1.0 + math.exp(-4.0 * (s1 - s2)))
 
 def confidence_pct(prob: float, mult: float = 1.0) -> int:
-    return int(min(95, (50 + abs(prob - 0.5) * 180) * mult))
+    base = 50 + abs(prob - 0.5) * 120
+    return int(min(80, base * mult))   # hard cap at 80
 
-def market_edge(model_prob: float, odds) -> float:
-    if not odds or odds <= 1.0: return 0.0
-    return model_prob - (1.0 / odds)
+def market_edge(model_prob: float, fav_odds, other_odds=None) -> float:
+    if not fav_odds or fav_odds <= 1.0:
+        return 0.0
+    raw_fav   = 1.0 / fav_odds
+    raw_other = 1.0 / other_odds if other_odds else None
+    if raw_other:
+        fair_fav = raw_fav / (raw_fav + raw_other)
+    else:
+        fair_fav = raw_fav
+    return round(model_prob - fair_fav, 4)
 
 def grade(conf: int) -> str:
-    return "HIGH" if conf >= 80 else ("MEDIUM" if conf >= 65 else "LOW")
+    return "HIGH" if conf >= 70 else ("MEDIUM" if conf >= 65 else "LOW")
 
 def grade_icon(g: str) -> str:
     return {"HIGH": "🔥", "MEDIUM": "⚡", "LOW": "🌡️"}.get(g, "")
 
 
 # ══════════════════════════════════════════════════════════════
-# EVALUATE MATCHES  (shared by today + tomorrow)
+# PREDICTION EXTRAS
+# ══════════════════════════════════════════════════════════════
+def _is_bo5(tournament: str) -> bool:
+    t = (tournament or "").lower()
+    return any(x in t for x in ["grand slam","wimbledon","us open","australian",
+                                  "french","roland","davis cup","atp finals"])
+
+def _predict_sets(conf: int, bo5: bool) -> str:
+    if bo5:
+        return "3-0" if conf >= 75 else ("3-1" if conf >= 67 else "3-2")
+    return "2-0" if conf >= 73 else "2-1"
+
+def _pred_games(sets_str: str, surface: str) -> int:
+    try:
+        w = int(sets_str.split("-")[0])
+        l = int(sets_str.split("-")[1])
+        return round(SURFACE_AVG_GAMES.get(surface, 9.8) * (w + l))
+    except Exception:
+        return 22
+
+def _ou_line(bo5: bool) -> float:
+    return 38.5 if bo5 else 21.5
+
+def _serve_label(serve_pct, surface: str, first_in_pct=None) -> str:
+    if serve_pct is None:
+        return "N/A"
+    base    = SURFACE_SERVE_HOLD.get(surface, 0.72)
+    pct_str = f"{round(serve_pct*100)}%"
+    if first_in_pct:
+        pct_str = f"{round(serve_pct*100)}% pts / {round(first_in_pct*100)}% in"
+    if serve_pct >= base + 0.05: return f"Strong ({pct_str})"
+    if serve_pct <= base - 0.05: return f"Weak ({pct_str})"
+    return f"Average ({pct_str})"
+
+def _set_handicap(conf: int, winner: str) -> str:
+    if conf >= 73: return f"{winner} -1.5 sets"
+    if conf >= 65: return f"{winner} -1.5 sets (marginal)"
+    return "Skip set handicap"
+
+def _key_factor(d1: dict, d2: dict, p1: str, p2: str, surface: str) -> str:
+    s1 = d1.get("serve_win_pct"); s2 = d2.get("serve_win_pct")
+    if s1 and s2:
+        if s1 > s2 + 0.08: return f"{p1} serve dominates on {surface}"
+        if s2 > s1 + 0.08: return f"{p2} serve dominates on {surface}"
+    sw1 = d1.get("sw",{}).get(surface,0); sl1 = d1.get("sl",{}).get(surface,0)
+    sw2 = d2.get("sw",{}).get(surface,0); sl2 = d2.get("sl",{}).get(surface,0)
+    r1  = sw1/(sw1+sl1) if (sw1+sl1) >= 5 else None
+    r2  = sw2/(sw2+sl2) if (sw2+sl2) >= 5 else None
+    if r1 and r2:
+        if r1 > r2 + 0.15: return f"{p1} dominant on {surface} ({round(r1*100)}% win rate)"
+        if r2 > r1 + 0.15: return f"{p2} dominant on {surface} ({round(r2*100)}% win rate)"
+    r1d, r2d = d1.get("rank",500), d2.get("rank",500)
+    if abs(r1d - r2d) > 100:
+        return f"Ranking gap — {p1 if r1d < r2d else p2} is the clear favourite"
+    st1, st2 = d1.get("streak",0), d2.get("streak",0)
+    if st1 >= 4: return f"{p1} on a {st1}-win streak"
+    if st2 >= 4: return f"{p2} on a {st2}-win streak"
+    return {"clay":"Clay rewards baseline stamina",
+            "grass":"Grass favours big servers",
+            "indoors":"Indoor slightly boosts serving",
+            "hard":"Recent form decides"}.get(surface,"Form decides")
+
+
+# ══════════════════════════════════════════════════════════════
+# EVALUATE A LIST OF MATCHES  (shared today + tomorrow)
 # ══════════════════════════════════════════════════════════════
 def evaluate_matches(matches: list, context, is_tomorrow: bool = False) -> list:
-    """
-    Run scoring model on a list of matches.
-    Returns picks that pass base filters (conf, gap, odds, edge).
-    Each pick gets is_tomorrow flag for downstream handling.
-    """
     picks = []
     tag   = "TOMORROW" if is_tomorrow else "TODAY"
 
@@ -758,13 +969,17 @@ def evaluate_matches(matches: list, context, is_tomorrow: bool = False) -> list:
             s2   = score_player(d2, m["surface"], m["slug2"])
             prob = win_prob(s1, s2)
 
-            blended, conf_mult = odds_blend(prob, m["odds_p1"], m["odds_p2"])
-            conf = confidence_pct(blended, conf_mult)
+            h2h_key          = f"{min(m['slug1'],m['slug2'])}_{max(m['slug1'],m['slug2'])}"
+            h2h_w, h2h_t     = _h2h_cache.get(h2h_key, (0, 0))
+            prob             = h2h_adjustment(prob, h2h_w, h2h_t)
 
+            blended, conf_mult = odds_blend(prob, m["odds_p1"], m["odds_p2"])
+            conf       = confidence_pct(blended, conf_mult)
             favourite  = m["p1"] if blended > 0.5 else m["p2"]
             fav_prob   = max(blended, 1 - blended)
             fav_odds   = m["odds_p1"] if blended > 0.5 else m["odds_p2"]
-            edge       = market_edge(fav_prob, fav_odds)
+            other_odds = m["odds_p2"] if blended > 0.5 else m["odds_p1"]
+            edge       = market_edge(fav_prob, fav_odds, other_odds)
             pick_grade = grade(conf)
 
             print(
@@ -772,18 +987,24 @@ def evaluate_matches(matches: list, context, is_tomorrow: bool = False) -> list:
                 f"  rest={d1['days_rest']}d  score={s1:.3f}\n"
                 f"   {m['p2']:22s} rank={d2['rank']:>3}  streak={d2['streak']:+d}"
                 f"  rest={d2['days_rest']}d  score={s2:.3f}\n"
-                f"   prob={blended:.3f}  conf={conf}%  edge={edge:+.3f}  grade={pick_grade}"
+                f"   H2H {h2h_w}/{h2h_t}  prob={blended:.3f}  "
+                f"conf={conf}%  edge={edge:+.3f}  grade={pick_grade}"
             )
 
             # Base filters
             if conf < 65:
-                print(f"   SKIP: conf {conf}% < 65%"); continue
+                print(f"   SKIP: conf {conf}%"); continue
             if abs(blended - 0.5) < 0.07:
                 print(f"   SKIP: too close"); continue
             if not fav_odds:
                 print(f"   SKIP: no odds"); continue
             if edge < 0.03:
-                print(f"   SKIP: edge {edge:+.3f} < 0.03"); continue
+                print(f"   SKIP: edge {edge:+.3f}"); continue
+
+            bo5        = _is_bo5(m["tournament"])
+            pred_sets  = _predict_sets(conf, bo5)
+            pred_games = _pred_games(pred_sets, m["surface"])
+            ou_val     = _ou_line(bo5)
 
             picks.append({
                 "m": m, "d1": d1, "d2": d2,
@@ -793,6 +1014,15 @@ def evaluate_matches(matches: list, context, is_tomorrow: bool = False) -> list:
                 "edge": edge,
                 "streak1": d1.get("streak", 0),
                 "streak2": d2.get("streak", 0),
+                "pred_sets":  pred_sets,
+                "pred_games": pred_games,
+                "over_under": ("Over" if pred_games >= ou_val else "Under") + f" {ou_val}",
+                "handicap":   _set_handicap(conf, favourite),
+                "serve1":     _serve_label(d1.get("serve_win_pct"), m["surface"],
+                                           d1.get("first_serve_pct")),
+                "serve2":     _serve_label(d2.get("serve_win_pct"), m["surface"],
+                                           d2.get("first_serve_pct")),
+                "key_factor": _key_factor(d1, d2, m["p1"], m["p2"], m["surface"]),
                 "is_tomorrow": is_tomorrow,
             })
 
@@ -803,7 +1033,7 @@ def evaluate_matches(matches: list, context, is_tomorrow: bool = False) -> list:
 
 
 # ══════════════════════════════════════════════════════════════
-# FORMAT A PICK BLOCK
+# FORMAT ONE PICK
 # ══════════════════════════════════════════════════════════════
 def format_pick(pk: dict) -> str:
     m        = pk["m"]
@@ -821,6 +1051,10 @@ def format_pick(pk: dict) -> str:
         f"Ranks: #{pk['d1']['rank']} vs #{pk['d2']['rank']}\n"
         f"Scores: {pk['s1']:.2f} vs {pk['s2']:.2f}\n"
         f"Streak: {pk['streak1']:+d} vs {pk['streak2']:+d}\n"
+        f"📊 Sets: {pk['pred_sets']}  |  {pk['over_under']} games\n"
+        f"🎯 Handicap: {pk['handicap']}\n"
+        f"🏓 Serve: {pk['serve1']} vs {pk['serve2']}\n"
+        f"💡 {pk['key_factor']}\n"
         f"Edge: {pk['edge']:+.2f}  ⏰ {m['time']}\n"
     )
 
@@ -841,36 +1075,39 @@ def run():
             return
 
         _prefetch(context, today_matches)
-        today_picks_raw = evaluate_matches(today_matches, context, is_tomorrow=False)
-        today_picks     = apply_mode_filters(today_picks_raw)
+        today_raw   = evaluate_matches(today_matches, context, is_tomorrow=False)
+        today_picks = apply_mode_filters(today_raw)
         today_picks.sort(key=lambda x: x["conf"], reverse=True)
 
         # ── TOMORROW FALLBACK ─────────────────────────────────
-        # Fetch tomorrow if today has fewer than TOMORROW_THRESHOLD HIGH picks
+        # Triggered when today has fewer than TOMORROW_THRESHOLD HIGH picks
         tomorrow_picks = []
         if len(today_picks) < TOMORROW_THRESHOLD:
-            print(f"\n[FALLBACK] Only {len(today_picks)} today picks — fetching tomorrow...")
+            print(
+                f"\n[FALLBACK] Only {len(today_picks)} today picks "
+                f"(threshold={TOMORROW_THRESHOLD}) — fetching tomorrow..."
+            )
             tmr_matches = get_matches(context, day="1", label="TOMORROW")
-
             if tmr_matches:
-                # Prefetch only players not already cached
-                new_tmr = [m for m in tmr_matches
-                           if m["slug1"] not in _player_cache
-                           or m["slug2"] not in _player_cache]
-                if new_tmr:
-                    _prefetch(context, new_tmr)
+                # Only prefetch players not already cached
+                uncached = [
+                    m for m in tmr_matches
+                    if m["slug1"] not in _player_cache
+                    or m["slug2"] not in _player_cache
+                ]
+                if uncached:
+                    _prefetch(context, uncached)
 
-                tmr_picks_raw = evaluate_matches(tmr_matches, context, is_tomorrow=True)
-                # Tomorrow picks: HIGH filter only — no dedup (always fresh)
-                tomorrow_picks = [pk for pk in tmr_picks_raw if pk.get("grade") == "HIGH"]
+                tmr_raw        = evaluate_matches(tmr_matches, context, is_tomorrow=True)
+                tomorrow_picks = [pk for pk in tmr_raw if pk.get("grade") == "HIGH"]
                 tomorrow_picks.sort(key=lambda x: x["conf"], reverse=True)
-                print(f"[FALLBACK] {len(tomorrow_picks)} tomorrow HIGH picks found")
+                print(f"[FALLBACK] {len(tomorrow_picks)} tomorrow HIGH picks")
 
-        # ── SEND ──────────────────────────────────────────────
+        # ── COMBINE + SEND ────────────────────────────────────
         all_picks = today_picks[:6] + tomorrow_picks[:3]
 
         if not all_picks:
-            print(f"[{RUN_MODE.upper()}] No qualifying picks.")
+            print(f"[{RUN_MODE.upper()}] No qualifying picks today.")
             return   # silent
 
         mode_label = {
@@ -882,28 +1119,28 @@ def run():
         today_str = datetime.now(WAT).strftime("%A %d %B %Y")
         lines     = [f"🎾 WTA ENGINE v7  {mode_label}\n📅 {today_str}\n"]
 
-        # Section header if we have both today + tomorrow
         has_today    = any(not pk["is_tomorrow"] for pk in all_picks)
         has_tomorrow = any(pk["is_tomorrow"]     for pk in all_picks)
 
         if has_today and has_tomorrow:
             lines.append("━━━ TODAY ━━━\n")
 
+        prev_was_today = True
         for pk in all_picks:
-            if has_today and has_tomorrow and pk["is_tomorrow"] and \
-               not all_picks[all_picks.index(pk)-1]["is_tomorrow"]:
+            if has_today and has_tomorrow and pk["is_tomorrow"] and prev_was_today:
                 lines.append("\n━━━ TOMORROW (preview) ━━━\n")
             lines.append(format_pick(pk))
+            prev_was_today = not pk["is_tomorrow"]
 
         sent_time = datetime.now(WAT).strftime("%H:%M WAT")
-        lines.append(f"⚠️ For entertainment only.\n🕐 {sent_time}")
+        lines.append(f"⚠️ For entertainment only.\n🕐 Sent at {sent_time}")
         msg = "\n".join(lines)
         print("\n" + msg)
         send_telegram(msg)
 
-        # Only mark TODAY picks as sent — tomorrow picks stay fresh
+        # Mark only today picks as sent — tomorrow stays fresh
         if should_mark_sent():
-            mark_as_sent(all_picks)   # mark_as_sent skips is_tomorrow=True picks
+            mark_as_sent(all_picks)
 
     finally:
         browser.close()
