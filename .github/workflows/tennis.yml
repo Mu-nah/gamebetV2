@@ -3,7 +3,7 @@ name: WTA Prediction Bot
 # ─────────────────────────────────────────────────────────────
 # SCHEDULE  (UTC — WAT is UTC+1)
 #
-#  00:00 UTC = 01:00 WAT  ← DAILY RESET (dedup ignored, all HIGH picks sent)
+#  00:00 UTC = 01:00 WAT  ← DAILY RESET
 #  03:00 UTC = 04:00 WAT
 #  06:00 UTC = 07:00 WAT
 #  09:00 UTC = 10:00 WAT
@@ -14,16 +14,15 @@ name: WTA Prediction Bot
 # ─────────────────────────────────────────────────────────────
 on:
   schedule:
-    - cron: '0 0 * * *'    # 01:00 WAT — daily reset
-    - cron: '0 3 * * *'    # 04:00 WAT
-    - cron: '0 6 * * *'    # 07:00 WAT
-    - cron: '0 9 * * *'    # 10:00 WAT
-    - cron: '0 12 * * *'   # 13:00 WAT
-    - cron: '0 15 * * *'   # 16:00 WAT
-    - cron: '0 18 * * *'   # 19:00 WAT
-    - cron: '0 21 * * *'   # 22:00 WAT
-
-  workflow_dispatch:   # Manual trigger — sends all HIGH picks regardless of dedup
+    - cron: '0 0 * * *'
+    - cron: '0 3 * * *'
+    - cron: '0 6 * * *'
+    - cron: '0 9 * * *'
+    - cron: '0 12 * * *'
+    - cron: '0 15 * * *'
+    - cron: '0 18 * * *'
+    - cron: '0 21 * * *'
+  workflow_dispatch:
 
 jobs:
   run-bot:
@@ -31,24 +30,17 @@ jobs:
     timeout-minutes: 20
 
     steps:
-      # ── MUST be first — cache key depends on this ────────────────────────
-      - name: Set TODAY
-        run: echo "TODAY=$(date -u +%Y-%m-%d)" >> $GITHUB_ENV
-
-      # ── Decide RUN_MODE ──────────────────────────────────────────────────
-      - name: Set RUN_MODE
+      - name: Set TODAY and RUN_MODE
         run: |
+          echo "TODAY=$(date -u +%Y-%m-%d)" >> $GITHUB_ENV
           HOUR=$(date -u +%H)
           EVENT="${{ github.event_name }}"
           if   [ "$EVENT" = "workflow_dispatch" ]; then
-            echo "RUN_MODE=force"        >> $GITHUB_ENV
-            echo "▶ force  (manual trigger)"
+            echo "RUN_MODE=force"       >> $GITHUB_ENV
           elif [ "$HOUR"  = "00" ]; then
-            echo "RUN_MODE=daily_reset"  >> $GITHUB_ENV
-            echo "▶ daily_reset  (01:00 WAT)"
+            echo "RUN_MODE=daily_reset" >> $GITHUB_ENV
           else
-            echo "RUN_MODE=normal"       >> $GITHUB_ENV
-            echo "▶ normal  (UTC hour=$HOUR)"
+            echo "RUN_MODE=normal"      >> $GITHUB_ENV
           fi
 
       - name: Checkout repo
@@ -72,13 +64,19 @@ jobs:
           playwright install chromium
           playwright install-deps chromium
 
-      # ── Date-scoped cache — auto-resets each day ─────────────────────────
+      # ── Dedup cache ──────────────────────────────────────────────────────
+      # Actions cache is IMMUTABLE once written with a given key.
+      # Solution: restore with a prefix wildcard (gets latest matching entry),
+      # then save with a unique key (timestamp) so each run writes a new entry.
+      # The restore_keys prefix ensures we always get the most recent file.
       - name: Restore sent_matches cache
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: sent_matches.json
-          key: sent-matches-${{ env.TODAY }}
-          restore-keys: sent-matches-
+          key: sent-matches-${{ env.TODAY }}-never-exact-match
+          restore-keys: |
+            sent-matches-${{ env.TODAY }}-
+            sent-matches-
 
       - name: Run bot
         env:
@@ -87,9 +85,10 @@ jobs:
           RUN_MODE:  ${{ env.RUN_MODE }}
         run: python predictor.py
 
+      # Save with a unique timestamped key so it's never blocked by immutability
       - name: Save sent_matches cache
         if: always()
-        uses: actions/cache@v4
+        uses: actions/cache/save@v4
         with:
           path: sent_matches.json
-          key: sent-matches-${{ env.TODAY }}
+          key: sent-matches-${{ env.TODAY }}-${{ github.run_id }}-${{ github.run_attempt }}
