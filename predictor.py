@@ -1224,8 +1224,6 @@ def evaluate_matches(matches: list, context) -> list:
                 print(f"   SKIP: conf {conf}%"); continue
             if abs(blended - 0.5) < 0.07:
                 print(f"   SKIP: too close"); continue
-            if edge < 0.03:
-                print(f"   SKIP: edge {edge:+.3f}"); continue
 
             bo5        = _is_bo5(m["tournament"])
             pred_sets  = _predict_sets(conf, bo5)
