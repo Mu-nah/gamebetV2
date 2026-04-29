@@ -6,11 +6,6 @@ RUN_MODE (set by GitHub Actions env var):
   daily_reset  — 1am WAT run:    dedup OFF, HIGH+MEDIUM filter ON, marks sent
   force        — manual trigger: dedup OFF, HIGH+MEDIUM filter ON, does NOT mark sent
 
-TOMORROW FALLBACK:
-  If today HIGH+MEDIUM picks < TOMORROW_THRESHOLD (3), fetch &day=1 and append
-  tomorrow HIGH picks labelled "📅 TOMORROW".
-  Tomorrow picks are never written to dedup (re-evaluated fresh next day).
-
 SERVE STATS:
   TennisAbstract live scraping removed — it's unreliable (site structure
   changes, timeouts, connection failures). Replaced with a static embedded
@@ -49,7 +44,6 @@ if RUN_MODE not in ("normal", "daily_reset", "force"):
     RUN_MODE = "normal"
 print(f"[MODE] RUN_MODE = {RUN_MODE.upper()}")
 
-TOMORROW_THRESHOLD = 3
 PREFETCH_LIMIT     = 20
 SURFACE_COL        = {"clay": 2, "hard": 3, "indoors": 4, "grass": 5}
 
@@ -354,8 +348,6 @@ def mark_as_sent(picks: list):
     today = _today_wat()
     sent.setdefault(today, [])
     for pk in picks:
-        if pk.get("is_tomorrow"):
-            continue
         key = _match_key(pk["m"]["p1"], pk["m"]["p2"])
         if key not in sent[today]:
             sent[today].append(key)
@@ -791,10 +783,6 @@ def get_matches(context, day: str = "today", label: str = "") -> list:
                 if not is_allowed_tournament(current_tournament, check_date=(day != "today")):
                     i += 2
                     continue
-                if odds_p1 is None and odds_p2 is None:
-                    print(f"   SKIP (no odds): {p1_name} vs {p2_name}")
-                    i += 2
-                    continue
 
                 round_label = ""
                 try:
@@ -1195,9 +1183,9 @@ def _key_factor(d1: dict, d2: dict, p1: str, p2: str, surface: str) -> str:
 # ══════════════════════════════════════════════════════════════
 # EVALUATE MATCHES
 # ══════════════════════════════════════════════════════════════
-def evaluate_matches(matches: list, context, is_tomorrow: bool = False) -> list:
+def evaluate_matches(matches: list, context) -> list:
     picks = []
-    tag   = "TOMORROW" if is_tomorrow else "TODAY"
+    tag   = "TODAY"
 
     for m in matches[:30]:
         try:
@@ -1236,8 +1224,6 @@ def evaluate_matches(matches: list, context, is_tomorrow: bool = False) -> list:
                 print(f"   SKIP: conf {conf}%"); continue
             if abs(blended - 0.5) < 0.07:
                 print(f"   SKIP: too close"); continue
-            if not fav_odds:
-                print(f"   SKIP: no odds"); continue
             if edge < 0.03:
                 print(f"   SKIP: edge {edge:+.3f}"); continue
 
@@ -1269,7 +1255,6 @@ def evaluate_matches(matches: list, context, is_tomorrow: bool = False) -> list:
                                            srv_data2["first_serve_pct"],
                                            srv_data2["source"]),
                 "key_factor": _key_factor(d1, d2, m["p1"], m["p2"], m["surface"]),
-                "is_tomorrow": is_tomorrow,
             })
 
         except Exception as e:
@@ -1287,10 +1272,9 @@ def format_pick(pk: dict) -> str:
     odds_str = f" @ {pk['winner_odds']}" if pk["winner_odds"] else ""
     bar      = "█" * (pk["conf"] // 10) + "░" * (10 - pk["conf"] // 10)
     rnd      = f"  · {m['round']}" if m.get("round") else ""
-    tmr      = "  📅 TOMORROW" if pk.get("is_tomorrow") else ""
     return (
         f"─────────────────────────\n"
-        f"🏟  {m['tournament']}  ({m['surface'].title()}){rnd}{tmr}\n"
+        f"🏟  {m['tournament']}  ({m['surface'].title()}){rnd}\n"
         f"⚔️  {m['p1']} vs {m['p2']}\n"
         f"{icon} {pk['grade']}  ✅  {pk['winner']}{odds_str}\n"
         f"[{bar}] {pk['conf']}%\n"
@@ -1321,37 +1305,12 @@ def run():
             return
 
         _prefetch(context, today_matches)
-        today_raw   = evaluate_matches(today_matches, context, is_tomorrow=False)
+        today_raw   = evaluate_matches(today_matches, context)
         today_picks = apply_mode_filters(today_raw)
         # HIGH picks first, then MEDIUM — both sorted by conf descending within tier
         today_picks.sort(key=lambda x: (0 if x["grade"] == "HIGH" else 1, -x["conf"]))
 
-        # ── TOMORROW FALLBACK ─────────────────────────────────
-        tomorrow_picks = []
-        if len(today_picks) < TOMORROW_THRESHOLD:
-            print(
-                f"\n[FALLBACK] Only {len(today_picks)} today picks "
-                f"(threshold={TOMORROW_THRESHOLD}) — fetching tomorrow..."
-            )
-            tmr_matches = get_matches(context, day="1", label="TOMORROW")
-            if tmr_matches:
-                uncached = [
-                    m for m in tmr_matches
-                    if m["slug1"] not in _player_cache
-                    or m["slug2"] not in _player_cache
-                ]
-                if uncached:
-                    _prefetch(context, uncached)
-
-                tmr_raw        = evaluate_matches(tmr_matches, context, is_tomorrow=True)
-                tomorrow_picks = [pk for pk in tmr_raw if pk.get("grade") in ("HIGH", "MEDIUM")]
-                tomorrow_picks.sort(key=lambda x: (0 if x["grade"] == "HIGH" else 1, -x["conf"]))
-                print(f"[FALLBACK] {len(tomorrow_picks)} HIGH/MEDIUM tomorrow picks")
-
-        # ── COMBINE + SEND ────────────────────────────────────
-        all_picks = today_picks[:6] + tomorrow_picks[:3]
-
-        if not all_picks:
+        if not today_picks:
             print(f"[{RUN_MODE.upper()}] No qualifying picks today.")
             return
 
@@ -1364,28 +1323,15 @@ def run():
         today_str = datetime.now(WAT).strftime("%A %d %B %Y")
         lines     = [f"🎾 WTA ENGINE v7  {mode_label}\n📅 {today_str}\n"]
 
-        has_today    = any(not pk["is_tomorrow"] for pk in all_picks)
-        has_tomorrow = any(pk["is_tomorrow"]     for pk in all_picks)
-        has_medium   = any(pk["grade"] == "MEDIUM" and not pk["is_tomorrow"] for pk in all_picks)
-        has_high     = any(pk["grade"] == "HIGH"   and not pk["is_tomorrow"] for pk in all_picks)
+        has_medium = any(pk["grade"] == "MEDIUM" for pk in today_picks)
+        has_high   = any(pk["grade"] == "HIGH"   for pk in today_picks)
 
-        if has_today and has_tomorrow:
-            lines.append("━━━ TODAY ━━━\n")
-
-        prev_was_today  = True
-        prev_grade      = None
-        for pk in all_picks:
-            # Insert TOMORROW divider
-            if has_today and has_tomorrow and pk["is_tomorrow"] and prev_was_today:
-                lines.append("\n━━━ TOMORROW (preview) ━━━\n")
-                prev_grade = None   # reset grade divider for tomorrow section
-            # Insert MEDIUM divider when we cross from HIGH to MEDIUM in today's picks
-            if not pk["is_tomorrow"] and has_high and has_medium:
-                if prev_grade == "HIGH" and pk["grade"] == "MEDIUM":
-                    lines.append("── ⚡ medium confidence ──\n")
+        prev_grade = None
+        for pk in today_picks[:6]:
+            if has_high and has_medium and prev_grade == "HIGH" and pk["grade"] == "MEDIUM":
+                lines.append("── ⚡ medium confidence ──\n")
             lines.append(format_pick(pk))
-            prev_was_today = not pk["is_tomorrow"]
-            prev_grade     = pk["grade"]
+            prev_grade = pk["grade"]
 
         sent_time = datetime.now(WAT).strftime("%H:%M WAT")
         lines.append(f"⚠️ For entertainment only.\n🕐 Sent at {sent_time}")
@@ -1394,7 +1340,7 @@ def run():
         send_telegram(msg)
 
         if should_mark_sent():
-            mark_as_sent(all_picks)
+            mark_as_sent(today_picks[:6])
 
     finally:
         browser.close()
