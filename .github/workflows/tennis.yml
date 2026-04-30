@@ -1,33 +1,24 @@
 name: WTA Prediction Bot
 
-# ─────────────────────────────────────────────────────────────
-# SCHEDULE  (UTC — WAT is UTC+1)
-#
-#  00:00 UTC = 01:00 WAT  ← DAILY RESET
-#  03:00 UTC = 04:00 WAT
-#  06:00 UTC = 07:00 WAT
-#  09:00 UTC = 10:00 WAT
-#  12:00 UTC = 13:00 WAT
-#  15:00 UTC = 16:00 WAT
-#  18:00 UTC = 19:00 WAT
-#  21:00 UTC = 22:00 WAT
-# ─────────────────────────────────────────────────────────────
 on:
   schedule:
-    - cron: '0 0 * * *'
-    - cron: '0 3 * * *'
-    - cron: '0 6 * * *'
-    - cron: '0 9 * * *'
-    - cron: '0 12 * * *'
-    - cron: '0 15 * * *'
-    - cron: '0 18 * * *'
-    - cron: '0 21 * * *'
+    - cron: '0 0 * * *'    # 01:00 WAT — daily reset
+    - cron: '0 3 * * *'    # 04:00 WAT
+    - cron: '0 6 * * *'    # 07:00 WAT
+    - cron: '0 9 * * *'    # 10:00 WAT
+    - cron: '0 12 * * *'   # 13:00 WAT
+    - cron: '0 15 * * *'   # 16:00 WAT
+    - cron: '0 18 * * *'   # 19:00 WAT
+    - cron: '0 21 * * *'   # 22:00 WAT
   workflow_dispatch:
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
+    # Give the job write permission so it can push state files back to repo
+    permissions:
+      contents: write
 
     steps:
       - name: Set TODAY and RUN_MODE
@@ -36,15 +27,19 @@ jobs:
           HOUR=$(date -u +%H)
           EVENT="${{ github.event_name }}"
           if   [ "$EVENT" = "workflow_dispatch" ]; then
-            echo "RUN_MODE=force"       >> $GITHUB_ENV
+            echo "RUN_MODE=force"       >> $GITHUB_ENV && echo "▶ force"
           elif [ "$HOUR"  = "00" ]; then
-            echo "RUN_MODE=daily_reset" >> $GITHUB_ENV
+            echo "RUN_MODE=daily_reset" >> $GITHUB_ENV && echo "▶ daily_reset"
           else
-            echo "RUN_MODE=normal"      >> $GITHUB_ENV
+            echo "RUN_MODE=normal"      >> $GITHUB_ENV && echo "▶ normal (UTC hour=$HOUR)"
           fi
 
       - name: Checkout repo
         uses: actions/checkout@v4
+        with:
+          # Use a PAT so the push step later can trigger other workflows if needed.
+          # Falls back to GITHUB_TOKEN (which is fine for just committing state files).
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -64,20 +59,6 @@ jobs:
           playwright install chromium
           playwright install-deps chromium
 
-      # ── Dedup cache ──────────────────────────────────────────────────────
-      # Actions cache is IMMUTABLE once written with a given key.
-      # Solution: restore with a prefix wildcard (gets latest matching entry),
-      # then save with a unique key (timestamp) so each run writes a new entry.
-      # The restore_keys prefix ensures we always get the most recent file.
-      - name: Restore sent_matches cache
-        uses: actions/cache/restore@v4
-        with:
-          path: sent_matches.json
-          key: sent-matches-${{ env.TODAY }}-never-exact-match
-          restore-keys: |
-            sent-matches-${{ env.TODAY }}-
-            sent-matches-
-
       - name: Run bot
         env:
           BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
@@ -85,10 +66,25 @@ jobs:
           RUN_MODE:  ${{ env.RUN_MODE }}
         run: python predictor.py
 
-      # Save with a unique timestamped key so it's never blocked by immutability
-      - name: Save sent_matches cache
+      # ── Commit state files back to repo ──────────────────────────────────
+      # This is the ONLY reliable way to persist state between Actions runs.
+      # sent_matches.json  — dedup (prevents same pick being sent twice today)
+      # elo_db.json        — surface ELO (grows over the season)
+      # outcomes.json      — calibration log
+      # h2h_cache.json     — H2H pairs (avoid re-scraping)
+      - name: Commit state files
         if: always()
-        uses: actions/cache/save@v4
-        with:
-          path: sent_matches.json
-          key: sent-matches-${{ env.TODAY }}-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          git config user.name  "wta-bot"
+          git config user.email "wta-bot@users.noreply.github.com"
+
+          # Stage only the state files — ignore everything else
+          git add -f sent_matches.json elo_db.json outcomes.json h2h_cache.json 2>/dev/null || true
+
+          # Only commit if something actually changed
+          if git diff --cached --quiet; then
+            echo "No state changes to commit."
+          else
+            git commit -m "bot: update state files [skip ci]"
+            git push
+          fi
