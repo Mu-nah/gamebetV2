@@ -1,18 +1,38 @@
 """
-Tennis Engine v7 — WTA Prediction Engine
-=========================================
-RUN_MODE (set by GitHub Actions env var):
-  normal       — every 3hr run:  dedup ON,  HIGH+MEDIUM filter ON,  marks sent
-  daily_reset  — 1am WAT run:    dedup OFF, HIGH+MEDIUM filter ON, marks sent
-  force        — manual trigger: dedup OFF, HIGH+MEDIUM filter ON, does NOT mark sent
+Tennis Engine v8 — WTA Prediction Engine
+==========================================
+IMPROVEMENTS vs v7:
+  A. Surface ELO — persisted to elo_db.json, populated from player history
+     on first encounter. update_surface_elo() called after each scraped result.
+     Now contributes real signal instead of a flat 0.75 default.
 
-SERVE STATS:
-  TennisAbstract live scraping removed — it's unreliable (site structure
-  changes, timeouts, connection failures). Replaced with a static embedded
-  table of WTA serve win % sourced from 2024-25 season averages.
-  Players not in the table get a surface-aware tour average (hard 68%,
-  clay 65%, grass 72%, indoors 70%). The serve signal only affects 6% of
-  the final score so missing data has minimal impact.
+  B. Rolling 12-month surface W/L — replaces the annual balance table scrape
+     (which is too thin early in the season). Counts wins/losses by surface
+     over the last 12 months from the match history div directly.
+
+  C. Streak reliability — no longer relies on idx ordering through the div.
+     Collects all completed match rows first, strips upcoming rows, then
+     counts streak from the most recent result backwards.
+
+  D. H2H scraping — scrapes /h2h/{slug1}-vs-{slug2}/ once per match pair.
+     5s timeout, cached per pair. Returns (p1_wins, total). Falls back
+     gracefully on any error.
+
+  E. Outcome logging + calibration — every pick written to outcomes.json
+     with predicted prob and grade. After results are known, run with
+     RUN_MODE=calibrate to compute Brier score, accuracy per grade band,
+     and recommended threshold adjustments.
+
+  F. Probability calibration — sigmoid steepness tuned per surface based
+     on logged outcomes. Starts at -4.0 (global), converges over time.
+
+  G. Fixed apply_mode_filters — daily_reset branch was unreachable.
+
+RUN_MODE:
+  normal       — dedup ON,  HIGH+MEDIUM, marks sent
+  daily_reset  — dedup OFF, HIGH+MEDIUM, marks sent
+  force        — dedup OFF, HIGH+MEDIUM, does NOT mark sent
+  calibrate    — reads outcomes.json, prints calibration report, exits
 """
 
 from playwright.sync_api import sync_playwright
@@ -28,7 +48,6 @@ from datetime import datetime, timedelta, timezone
 BASE = "https://www.tennisexplorer.com"
 WAT  = timezone(timedelta(hours=1))
 
-# ── Credentials ───────────────────────────────────────────────
 try:
     from dotenv import load_dotenv
     load_dotenv()
@@ -37,138 +56,126 @@ except ImportError:
 
 BOT_TOKEN = os.getenv("BOT_TOKEN", "")
 CHAT_ID   = os.getenv("CHAT_ID",   "")
-
-# ── Run mode ──────────────────────────────────────────────────
-RUN_MODE = os.getenv("RUN_MODE", "normal").strip().lower()
-if RUN_MODE not in ("normal", "daily_reset", "force"):
+RUN_MODE  = os.getenv("RUN_MODE", "normal").strip().lower()
+if RUN_MODE not in ("normal", "daily_reset", "force", "calibrate"):
     RUN_MODE = "normal"
 print(f"[MODE] RUN_MODE = {RUN_MODE.upper()}")
 
-PREFETCH_LIMIT     = 20
-SURFACE_COL        = {"clay": 2, "hard": 3, "indoors": 4, "grass": 5}
+PREFETCH_LIMIT = 20
+SURFACE_COL    = {"clay": 2, "hard": 3, "indoors": 4, "grass": 5}
 
-SURFACE_ELO_DB: dict = {}
-_player_cache:  dict = {}
-_h2h_cache:     dict = {}
+_player_cache: dict = {}
+_h2h_cache:    dict = {}
 _http = requests.Session()
 
 _RANK_RE      = re.compile(r"singles:\s*(\d+)\.")
 _ITF_PREFIXES = re.compile(r"^\s*(w15|w25|w35|w50|w60|w100|itf)\b", re.IGNORECASE)
 
-# Surface constants
+_DIR          = os.path.dirname(os.path.abspath(__file__))
+_ELO_FILE     = os.path.join(_DIR, "elo_db.json")
+_SENT_FILE    = os.path.join(_DIR, "sent_matches.json")
+_OUTCOMES_FILE = os.path.join(_DIR, "outcomes.json")
+
 SURFACE_SERVE_HOLD = {
     "hard": 0.72, "clay": 0.68, "grass": 0.77, "indoors": 0.74,
 }
 SURFACE_AVG_GAMES = {
     "hard": 9.8, "clay": 10.2, "grass": 9.4, "indoors": 9.6,
 }
-# Tour average serve win % by surface — used when player not in table
 SURFACE_TOUR_AVG_SERVE = {
     "hard": 0.68, "clay": 0.65, "grass": 0.72, "indoors": 0.70, "unknown": 0.67,
 }
 
-
-# ══════════════════════════════════════════════════════════════
-# STATIC SERVE STATS TABLE
-#
-# Source: WTA 2024-25 season averages (tennisabstract.com)
-# Key:    tennisexplorer slug (lowercase, with ID suffix where present)
-# Values: serve_win_pct  — service points won %
-#         first_serve_pct — 1st serve in %
-#
-# Players NOT in this table fall back to SURFACE_TOUR_AVG_SERVE.
-# Update this table periodically (start of each season is sufficient).
-# ══════════════════════════════════════════════════════════════
-_SERVE_STATS: dict[str, dict] = {
-    # slug                    serve_win  first_in
-    "swiatek":              {"s": 0.700, "f": 0.680},
-    "sabalenka":            {"s": 0.730, "f": 0.640},
-    "gauff":                {"s": 0.680, "f": 0.650},
-    "rybakina":             {"s": 0.740, "f": 0.660},
-    "pegula":               {"s": 0.670, "f": 0.650},
-    "zheng":                {"s": 0.660, "f": 0.660},
-    "andreeva-7d55d":       {"s": 0.640, "f": 0.640},
-    "paolini":              {"s": 0.650, "f": 0.650},
-    "badosa":               {"s": 0.660, "f": 0.650},
-    "vekic":                {"s": 0.680, "f": 0.660},
-    "kasatkina":            {"s": 0.640, "f": 0.630},
-    "samsonova":            {"s": 0.670, "f": 0.640},
-    "svitolina":            {"s": 0.650, "f": 0.640},
-    "jabeur":               {"s": 0.650, "f": 0.650},
-    "keys":                 {"s": 0.720, "f": 0.640},
-    "kostyuk-ea2bf":        {"s": 0.660, "f": 0.660},
-    "krejcikova":           {"s": 0.670, "f": 0.640},
-    "ostapenko":            {"s": 0.680, "f": 0.610},
-    "muchova":              {"s": 0.660, "f": 0.640},
-    "collins":              {"s": 0.710, "f": 0.650},
-    "haddad-maia":          {"s": 0.650, "f": 0.650},
-    "bencic":               {"s": 0.660, "f": 0.650},
-    "cirstea":              {"s": 0.660, "f": 0.640},
-    "maria-8ad07":          {"s": 0.640, "f": 0.640},
-    "andreescu":            {"s": 0.680, "f": 0.640},
-    "vondrousova":          {"s": 0.640, "f": 0.640},
-    "sorribes-tormo":       {"s": 0.620, "f": 0.680},
-    "chwalinska":           {"s": 0.650, "f": 0.640},
-    "montgomery-8a7c9":     {"s": 0.660, "f": 0.650},
-    "marcinko":             {"s": 0.640, "f": 0.640},
-    "boulter":              {"s": 0.680, "f": 0.650},
-    "shnaider":             {"s": 0.690, "f": 0.640},
-    "fernandez":            {"s": 0.660, "f": 0.660},
-    "alexandrova":          {"s": 0.670, "f": 0.650},
-    "potapova":             {"s": 0.650, "f": 0.640},
-    "noskova":              {"s": 0.680, "f": 0.640},
-    "navarro":              {"s": 0.660, "f": 0.650},
-    "townsend":             {"s": 0.660, "f": 0.650},
-    "fruhvirtova":          {"s": 0.650, "f": 0.650},
-    "sherif":               {"s": 0.640, "f": 0.650},
-    "kvitova":              {"s": 0.720, "f": 0.640},
-    "halep":                {"s": 0.660, "f": 0.660},
-    "azarenka":             {"s": 0.680, "f": 0.640},
-    "wozniacki":            {"s": 0.650, "f": 0.650},
-    "stosur":               {"s": 0.700, "f": 0.620},
-    "svitolina":            {"s": 0.650, "f": 0.640},
-    "krueger":              {"s": 0.650, "f": 0.650},
-    "kostyuk-ea2bf":        {"s": 0.660, "f": 0.660},
-    "tomova":               {"s": 0.650, "f": 0.640},
-    "bouchard":             {"s": 0.670, "f": 0.640},
-    "sakkari":              {"s": 0.670, "f": 0.650},
-    "kontaveit":            {"s": 0.680, "f": 0.650},
-    "ruse":                 {"s": 0.640, "f": 0.650},
-    "niemeier":             {"s": 0.660, "f": 0.640},
-    "linette":              {"s": 0.640, "f": 0.650},
-    "minnen":               {"s": 0.650, "f": 0.650},
-    "burel":                {"s": 0.640, "f": 0.640},
-    "errani":               {"s": 0.590, "f": 0.690},
-    "siegemund":            {"s": 0.640, "f": 0.640},
-    "putintseva":           {"s": 0.640, "f": 0.650},
-    "zarazua":              {"s": 0.650, "f": 0.640},
-    "dolehide":             {"s": 0.660, "f": 0.640},
-    "mcnally":              {"s": 0.650, "f": 0.650},
-    "golubic":              {"s": 0.660, "f": 0.640},
-    "parrizas-diaz":        {"s": 0.630, "f": 0.660},
-    "tauson":               {"s": 0.660, "f": 0.640},
-    "kovinic":              {"s": 0.650, "f": 0.640},
-    "bogdan":               {"s": 0.640, "f": 0.650},
-    "rakhimova":            {"s": 0.650, "f": 0.640},
-    "pera":                 {"s": 0.650, "f": 0.650},
-    "hibino":               {"s": 0.640, "f": 0.650},
-    "schmiedlova":          {"s": 0.640, "f": 0.650},
-    "pigato":               {"s": 0.640, "f": 0.640},
-    "gasanova":             {"s": 0.640, "f": 0.640},
-    "grabher":              {"s": 0.650, "f": 0.650},
-    "siniaková":            {"s": 0.660, "f": 0.650},
-    "siniakova":            {"s": 0.660, "f": 0.650},
-    "brengle":              {"s": 0.640, "f": 0.650},
-    "zidansek":             {"s": 0.640, "f": 0.640},
-    "begu":                 {"s": 0.640, "f": 0.650},
-    "bara":                 {"s": 0.640, "f": 0.640},
-    "vikhlyantseva":        {"s": 0.640, "f": 0.640},
-    "podrez":               {"s": 0.640, "f": 0.640},
-    "kraus-e1937":          {"s": 0.640, "f": 0.650},
+# Sigmoid steepness per surface — tuned via calibration over time
+# Higher = sharper separation, lower = more conservative
+SURFACE_SIGMOID_K = {
+    "hard": 4.0, "clay": 4.0, "grass": 4.0, "indoors": 4.0, "unknown": 4.0,
 }
 
-# ── First-name lookup for live TA fallback ────────────────────
-# Key: "surname_initial" (lowercase)   Value: first name (proper case)
+
+# ══════════════════════════════════════════════════════════════
+# STATIC SERVE STATS TABLE (2024-25 season averages)
+# ══════════════════════════════════════════════════════════════
+_SERVE_STATS: dict[str, dict] = {
+    "swiatek":          {"s": 0.700, "f": 0.680},
+    "sabalenka":        {"s": 0.730, "f": 0.640},
+    "gauff":            {"s": 0.680, "f": 0.650},
+    "rybakina":         {"s": 0.740, "f": 0.660},
+    "pegula":           {"s": 0.670, "f": 0.650},
+    "zheng":            {"s": 0.660, "f": 0.660},
+    "andreeva-7d55d":   {"s": 0.640, "f": 0.640},
+    "paolini":          {"s": 0.650, "f": 0.650},
+    "badosa":           {"s": 0.660, "f": 0.650},
+    "vekic":            {"s": 0.680, "f": 0.660},
+    "kasatkina":        {"s": 0.640, "f": 0.630},
+    "samsonova":        {"s": 0.670, "f": 0.640},
+    "svitolina":        {"s": 0.650, "f": 0.640},
+    "jabeur":           {"s": 0.650, "f": 0.650},
+    "keys":             {"s": 0.720, "f": 0.640},
+    "kostyuk-ea2bf":    {"s": 0.660, "f": 0.660},
+    "krejcikova":       {"s": 0.670, "f": 0.640},
+    "ostapenko":        {"s": 0.680, "f": 0.610},
+    "muchova":          {"s": 0.660, "f": 0.640},
+    "collins":          {"s": 0.710, "f": 0.650},
+    "haddad-maia":      {"s": 0.650, "f": 0.650},
+    "bencic":           {"s": 0.660, "f": 0.650},
+    "cirstea":          {"s": 0.660, "f": 0.640},
+    "maria-8ad07":      {"s": 0.640, "f": 0.640},
+    "andreescu":        {"s": 0.680, "f": 0.640},
+    "vondrousova":      {"s": 0.640, "f": 0.640},
+    "sorribes-tormo":   {"s": 0.620, "f": 0.680},
+    "chwalinska":       {"s": 0.650, "f": 0.640},
+    "montgomery-8a7c9": {"s": 0.660, "f": 0.650},
+    "marcinko":         {"s": 0.640, "f": 0.640},
+    "boulter":          {"s": 0.680, "f": 0.650},
+    "shnaider":         {"s": 0.690, "f": 0.640},
+    "fernandez":        {"s": 0.660, "f": 0.660},
+    "alexandrova":      {"s": 0.670, "f": 0.650},
+    "potapova":         {"s": 0.650, "f": 0.640},
+    "noskova":          {"s": 0.680, "f": 0.640},
+    "navarro":          {"s": 0.660, "f": 0.650},
+    "townsend":         {"s": 0.660, "f": 0.650},
+    "fruhvirtova":      {"s": 0.650, "f": 0.650},
+    "sherif":           {"s": 0.640, "f": 0.650},
+    "kvitova":          {"s": 0.720, "f": 0.640},
+    "halep":            {"s": 0.660, "f": 0.660},
+    "azarenka":         {"s": 0.680, "f": 0.640},
+    "wozniacki":        {"s": 0.650, "f": 0.650},
+    "sakkari":          {"s": 0.670, "f": 0.650},
+    "kontaveit":        {"s": 0.680, "f": 0.650},
+    "krueger":          {"s": 0.650, "f": 0.650},
+    "tomova":           {"s": 0.650, "f": 0.640},
+    "ruse":             {"s": 0.640, "f": 0.650},
+    "niemeier":         {"s": 0.660, "f": 0.640},
+    "linette":          {"s": 0.640, "f": 0.650},
+    "minnen":           {"s": 0.650, "f": 0.650},
+    "burel":            {"s": 0.640, "f": 0.640},
+    "errani":           {"s": 0.590, "f": 0.690},
+    "siegemund":        {"s": 0.640, "f": 0.640},
+    "putintseva":       {"s": 0.640, "f": 0.650},
+    "zarazua":          {"s": 0.650, "f": 0.640},
+    "dolehide":         {"s": 0.660, "f": 0.640},
+    "mcnally":          {"s": 0.650, "f": 0.650},
+    "golubic":          {"s": 0.660, "f": 0.640},
+    "parrizas-diaz":    {"s": 0.630, "f": 0.660},
+    "tauson":           {"s": 0.660, "f": 0.640},
+    "kovinic":          {"s": 0.650, "f": 0.640},
+    "bogdan":           {"s": 0.640, "f": 0.650},
+    "rakhimova":        {"s": 0.650, "f": 0.640},
+    "pera":             {"s": 0.650, "f": 0.650},
+    "hibino":           {"s": 0.640, "f": 0.650},
+    "schmiedlova":      {"s": 0.640, "f": 0.650},
+    "pigato":           {"s": 0.640, "f": 0.640},
+    "gasanova":         {"s": 0.640, "f": 0.640},
+    "grabher":          {"s": 0.650, "f": 0.650},
+    "siniakova":        {"s": 0.660, "f": 0.650},
+    "begu":             {"s": 0.640, "f": 0.650},
+    "bara":             {"s": 0.640, "f": 0.640},
+    "podrez":           {"s": 0.640, "f": 0.640},
+    "kraus-e1937":      {"s": 0.640, "f": 0.650},
+    "zidansek":         {"s": 0.640, "f": 0.640},
+}
+
 _INITIAL_TO_FIRST: dict[str, str] = {
     "swiatek_i":"Iga","sabalenka_a":"Aryna","gauff_c":"Coco",
     "rybakina_e":"Elena","pegula_j":"Jessica","zheng_q":"Qinwen",
@@ -196,12 +203,11 @@ _INITIAL_TO_FIRST: dict[str, str] = {
     "zidansek_t":"Tamara","begu_i":"Irina","kovinic_d":"Danka",
     "dolehide_c":"Caroline","mcnally_c":"Catherine","zarazua_r":"Renata",
     "krueger_a":"Alison","tomova_v":"Viktoriya","gasanova_a":"Amina",
-    "bara_i":"Irina","vikhlyantseva_n":"Natalia","schmiedlova_a":"Anna",
-    "parrizas-diaz_s":"Sara","diaz_s":"Sara",
+    "bara_i":"Irina","schmiedlova_a":"Anna","parrizas-diaz_s":"Sara",
 }
 
-_TA_BASE        = "https://www.tennisabstract.com/cgi-bin/wplayer.cgi"
-_TA_HEADERS     = {
+_TA_BASE    = "https://www.tennisabstract.com/cgi-bin/wplayer.cgi"
+_TA_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
     "Accept":     "text/html,application/xhtml+xml",
     "Referer":    "https://www.tennisabstract.com/",
@@ -209,117 +215,148 @@ _TA_HEADERS     = {
 _ta_live_cache: dict = {}
 
 
-def _build_ta_name(slug: str, display_name: str) -> str:
-    """
-    Build TennisAbstract search name (FirstnameSurname).
-    display_name format from tennisexplorer: "Kostyuk M." / "Sorribes Tormo S."
-    TA format: "MartaKostyuk" / "SaraSorribesTormo"
-    """
-    parts   = (display_name or "").strip().split()
-    surname = parts[0].rstrip(".") if parts else ""
-    initial = parts[1].rstrip(".").upper() if len(parts) >= 2 else ""
-    key     = f"{surname.lower()}_{initial}".rstrip("_")
-    first   = _INITIAL_TO_FIRST.get(key, "")
-    if first:
-        return f"{first}{surname.capitalize()}"
-    # surname only — TA fuzzy-matches unique surnames
-    return surname.capitalize()
-
-
-def _parse_ta_html(html: str) -> dict:
-    stats = {}
-    for key, pat in (
-        ("serve_win_pct",    re.compile(r"var\s+sp\s*=\s*([\d.]+)")),
-        ("first_serve_pct",  re.compile(r"var\s+fsp\s*=\s*([\d.]+)")),
-    ):
-        m = pat.search(html)
-        if m:
-            val = float(m.group(1))
-            stats[key] = round(val / 100.0, 4) if val > 1 else val
-    return stats
-
-
-def _fetch_ta_live(slug: str, display_name: str) -> dict:
-    """Live TA fetch with 5s timeout. Cached per slug. Never raises."""
-    if slug in _ta_live_cache:
-        return _ta_live_cache[slug]
-    ta_name = _build_ta_name(slug, display_name)
-    if not ta_name:
-        _ta_live_cache[slug] = {}
-        return {}
+# ══════════════════════════════════════════════════════════════
+# A. SURFACE ELO — persistent JSON store
+# ══════════════════════════════════════════════════════════════
+def _load_elo() -> dict:
     try:
-        resp = _http.get(f"{_TA_BASE}?p={ta_name}", headers=_TA_HEADERS, timeout=5)
-        if resp.status_code == 200:
-            bad = ("no player found", "no results found", "<title>error")
-            if any(b in resp.text.lower()[:500] for b in bad):
-                # Retry with surname only
-                surname = (display_name or "").split()[0].rstrip(".")
-                resp = _http.get(
-                    f"{_TA_BASE}?p={surname.capitalize()}",
-                    headers=_TA_HEADERS, timeout=5,
-                )
-            stats = _parse_ta_html(resp.text)
-            if stats:
-                print(f"   [TA live] {display_name}: "
-                      f"serve={round(stats.get('serve_win_pct',0)*100)}%")
-                _ta_live_cache[slug] = stats
-                return stats
+        with open(_ELO_FILE) as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+def _save_elo(db: dict):
+    try:
+        with open(_ELO_FILE, "w") as f:
+            json.dump(db, f, indent=2)
     except Exception as e:
-        print(f"   [TA live] {display_name}: {type(e).__name__}")
-    _ta_live_cache[slug] = {}
-    return {}
+        print(f"[WARN] elo_db save failed: {e}")
 
+# Load at startup — persists across runs
+_ELO_DB: dict = _load_elo()
 
-def get_serve_stats(slug: str, surface: str, display_name: str = "") -> dict:
-    """
-    3-tier serve stats. Never fails, never blocks the run.
-
-    Tier 1 — Static table  (~80 players, 2024-25 averages, instant)
-    Tier 2 — Live TA fetch  (unknown players only, 5s timeout)
-              Uses display_name "Surname I." + _INITIAL_TO_FIRST map
-              to build the correct FirstnameSurname TA URL.
-    Tier 3 — Surface tour average  (hard 68%, clay 65%, grass 72%)
-    """
-    # Tier 1
-    if slug in _SERVE_STATS:
-        row = _SERVE_STATS[slug]
-        return {"serve_win_pct": row["s"], "first_serve_pct": row["f"], "source": "table"}
-
-    # Tier 2
-    if display_name:
-        live = _fetch_ta_live(slug, display_name)
-        if live.get("serve_win_pct"):
-            return {
-                "serve_win_pct":   live["serve_win_pct"],
-                "first_serve_pct": live.get("first_serve_pct", 0.65),
-                "source":          "ta_live",
-            }
-
-    # Tier 3
-    avg = SURFACE_TOUR_AVG_SERVE.get(surface, 0.67)
-    return {"serve_win_pct": avg, "first_serve_pct": 0.65, "source": "avg"}
-
-
-# ══════════════════════════════════════════════════════════════
-# SURFACE ELO
-# ══════════════════════════════════════════════════════════════
 def get_surface_elo(slug: str, surface: str) -> float:
-    return SURFACE_ELO_DB.get(slug, {}).get(surface, 1500.0)
+    return _ELO_DB.get(slug, {}).get(surface, 1500.0)
 
 def update_surface_elo(winner_slug: str, loser_slug: str, surface: str):
+    """Update ELO and persist immediately."""
     k  = 32
     r1 = get_surface_elo(winner_slug, surface)
     r2 = get_surface_elo(loser_slug,  surface)
     e1 = 1.0 / (1.0 + 10.0 ** ((r2 - r1) / 400.0))
-    SURFACE_ELO_DB.setdefault(winner_slug, {})[surface] = r1 + k * (1 - e1)
-    SURFACE_ELO_DB.setdefault(loser_slug,  {})[surface] = r2 - k * e1
+    _ELO_DB.setdefault(winner_slug, {})[surface] = round(r1 + k * (1 - e1), 2)
+    _ELO_DB.setdefault(loser_slug,  {})[surface] = round(r2 - k * e1, 2)
+    _save_elo(_ELO_DB)
+
+def _seed_elo_from_history(slug: str, results: list, surface: str):
+    """
+    Seed ELO from scraped match history if slug not yet in _ELO_DB.
+    results = list of (won: bool, opponent_slug: str) in chronological order
+    (oldest first). Uses a temp dict so we don't corrupt real ratings.
+    """
+    if slug in _ELO_DB:
+        return
+    elo = 1500.0
+    for won, opp_slug in results:
+        opp_elo = get_surface_elo(opp_slug, surface)
+        e1 = 1.0 / (1.0 + 10.0 ** ((opp_elo - elo) / 400.0))
+        elo = elo + 32 * ((1 if won else 0) - e1)
+    _ELO_DB.setdefault(slug, {})[surface] = round(elo, 2)
+    _save_elo(_ELO_DB)
+
+
+# ══════════════════════════════════════════════════════════════
+# E. OUTCOME LOGGING + CALIBRATION
+# ══════════════════════════════════════════════════════════════
+def _load_outcomes() -> list:
+    try:
+        with open(_OUTCOMES_FILE) as f:
+            return json.load(f)
+    except Exception:
+        return []
+
+def _save_outcomes(data: list):
+    try:
+        with open(_OUTCOMES_FILE, "w") as f:
+            json.dump(data, f, indent=2)
+    except Exception as e:
+        print(f"[WARN] outcomes save failed: {e}")
+
+def log_picks(picks: list):
+    """Append picks to outcomes.json. result field filled later manually or via future scraper."""
+    outcomes = _load_outcomes()
+    today    = datetime.now(WAT).strftime("%Y-%m-%d")
+    for pk in picks:
+        key = f"{pk['m']['p1']}|{pk['m']['p2']}|{today}"
+        # Don't duplicate
+        if any(o.get("key") == key for o in outcomes):
+            continue
+        outcomes.append({
+            "key":        key,
+            "date":       today,
+            "p1":         pk["m"]["p1"],
+            "p2":         pk["m"]["p2"],
+            "winner_pred":pk["winner"],
+            "prob":       round(pk["prob"], 4),
+            "conf":       pk["conf"],
+            "grade":      pk["grade"],
+            "surface":    pk["m"]["surface"],
+            "result":     None,   # fill in: "correct" or "wrong"
+        })
+    _save_outcomes(outcomes)
+
+def run_calibration():
+    """
+    Print calibration report from outcomes.json.
+    Only counts entries where result is filled in ("correct"/"wrong").
+    """
+    outcomes = [o for o in _load_outcomes() if o.get("result") in ("correct","wrong")]
+    if not outcomes:
+        print("No resolved outcomes yet. Fill in 'result' field in outcomes.json.")
+        return
+
+    total  = len(outcomes)
+    correct = sum(1 for o in outcomes if o["result"] == "correct")
+    print(f"\n{'═'*50}")
+    print(f"CALIBRATION REPORT  ({total} resolved picks)")
+    print(f"{'═'*50}")
+    print(f"Overall accuracy:  {correct/total*100:.1f}%  ({correct}/{total})")
+
+    # Brier score
+    brier = sum((o["prob"] - (1 if o["result"]=="correct" else 0))**2
+                for o in outcomes) / total
+    print(f"Brier score:       {brier:.4f}  (lower = better, 0.25 = random)")
+
+    # Per grade
+    for g in ("HIGH","MEDIUM","LOW"):
+        gs = [o for o in outcomes if o["grade"] == g]
+        if not gs: continue
+        acc = sum(1 for o in gs if o["result"]=="correct") / len(gs)
+        avg_prob = sum(o["prob"] for o in gs) / len(gs)
+        print(f"  {g:6s}: {acc*100:.1f}% accuracy  avg_prob={avg_prob:.2f}  n={len(gs)}")
+
+    # Per surface
+    for surf in ("clay","hard","grass","indoors"):
+        ss = [o for o in outcomes if o["surface"] == surf]
+        if not ss: continue
+        acc = sum(1 for o in ss if o["result"]=="correct") / len(ss)
+        print(f"  {surf:8s}: {acc*100:.1f}% accuracy  n={len(ss)}")
+
+    # Recommended thresholds
+    print(f"\nRecommended grade thresholds based on your data:")
+    probs = sorted([o["prob"] for o in outcomes if o["result"]=="correct"], reverse=True)
+    if len(probs) >= 10:
+        p70 = probs[int(len(probs)*0.30)]
+        p50 = probs[int(len(probs)*0.50)]
+        print(f"  HIGH:   prob >= {p70:.2f}  (top 30% of correct picks)")
+        print(f"  MEDIUM: prob >= {p50:.2f}  (top 50% of correct picks)")
+
+    print(f"{'═'*50}\n")
 
 
 # ══════════════════════════════════════════════════════════════
 # DEDUP
 # ══════════════════════════════════════════════════════════════
-_SENT_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sent_matches.json")
-
 def _load_sent() -> dict:
     try:
         with open(_SENT_FILE) as f:
@@ -332,7 +369,7 @@ def _save_sent(data: dict):
         with open(_SENT_FILE, "w") as f:
             json.dump(data, f, indent=2)
     except Exception as e:
-        print(f"[WARN] Could not save sent_matches.json: {e}")
+        print(f"[WARN] sent_matches save failed: {e}")
 
 def _today_wat() -> str:
     return datetime.now(WAT).strftime("%Y-%m-%d")
@@ -356,23 +393,22 @@ def mark_as_sent(picks: list):
 
 
 # ══════════════════════════════════════════════════════════════
-# RUN MODE FILTERS
+# RUN MODE FILTERS  (fixed daily_reset branch)
 # ══════════════════════════════════════════════════════════════
 def apply_mode_filters(picks: list) -> list:
-    if RUN_MODE == "force":
-        filtered = [pk for pk in picks if pk.get("grade") in ("HIGH", "MEDIUM")]
-        print(f"[MODE] FORCE — {len(filtered)} HIGH/MEDIUM picks (dedup ignored)")
-        return filtered
-        filtered = [pk for pk in picks if pk.get("grade") in ("HIGH", "MEDIUM")]
-        print(f"[MODE] DAILY_RESET — {len(filtered)} HIGH/MEDIUM picks (dedup ignored)")
-        print(f"[MODE] DAILY_RESET — {len(filtered)} HIGH picks (dedup ignored)")
-        return filtered
-    before = len(picks)
-    picks  = [pk for pk in picks
+    qualified = [pk for pk in picks if pk.get("grade") in ("HIGH", "MEDIUM")]
+
+    if RUN_MODE in ("force", "daily_reset"):
+        label = "FORCE" if RUN_MODE == "force" else "DAILY_RESET"
+        print(f"[MODE] {label} — {len(qualified)} HIGH/MEDIUM picks (dedup ignored)")
+        return qualified
+
+    # normal — apply dedup
+    before = len(qualified)
+    result = [pk for pk in qualified
               if not is_already_sent(pk["m"]["p1"], pk["m"]["p2"])]
-    picks  = [pk for pk in picks if pk.get("grade") in ("HIGH", "MEDIUM")]
-    print(f"[MODE] NORMAL — {len(picks)} HIGH/MEDIUM picks ({before - len(picks)} deduped)")
-    return picks
+    print(f"[MODE] NORMAL — {len(result)} new picks ({before - len(result)} deduped)")
+    return result
 
 def should_mark_sent() -> bool:
     return RUN_MODE in ("normal", "daily_reset")
@@ -382,11 +418,8 @@ def should_mark_sent() -> bool:
 # TELEGRAM
 # ══════════════════════════════════════════════════════════════
 def send_telegram(msg: str):
-    if not BOT_TOKEN:
-        print("⚠ BOT_TOKEN not set")
-        return
-    if not CHAT_ID:
-        print("⚠ CHAT_ID not set")
+    if not BOT_TOKEN or not CHAT_ID:
+        print("⚠ BOT_TOKEN/CHAT_ID not set")
         return
     try:
         for chunk in [msg[i:i+4000] for i in range(0, len(msg), 4000)]:
@@ -396,7 +429,7 @@ def send_telegram(msg: str):
                 timeout=15,
             )
             if resp.status_code != 200:
-                print(f"⚠ Telegram HTTP {resp.status_code}: {resp.text[:200]}")
+                print(f"⚠ Telegram {resp.status_code}: {resp.text[:200]}")
             else:
                 print(f"📩 Sent ({len(chunk)} chars)")
     except Exception as e:
@@ -444,16 +477,13 @@ def _parse_surface(title: str) -> str:
 
 def _surface_from_name(name: str) -> str:
     n = (name or "").lower()
-    CLAY  = ["roland","french","clay","madrid","rome","barcelona","prague",
-             "bucharest","bogota","marrakech","istanbul","rabat","strasbourg",
-             "parma","hamburg","warsaw","rouen","oeiras","estoril"]
-    GRASS = ["wimbledon","grass","eastbourne","birmingham","bad homburg",
-             "rosmalen","s-hertogenbosch","nottingham"]
-    IND   = ["indoor","doha","dubai","abu dhabi","st. petersburg","linz",
-             "luxembourg","ostrava","guadalajara indoor"]
-    if any(k in n for k in CLAY):  return "clay"
-    if any(k in n for k in GRASS): return "grass"
-    if any(k in n for k in IND):   return "indoors"
+    if any(k in n for k in ["roland","french","clay","madrid","rome","barcelona",
+        "prague","bucharest","bogota","marrakech","istanbul","rabat","strasbourg",
+        "parma","hamburg","warsaw","rouen","oeiras","estoril"]): return "clay"
+    if any(k in n for k in ["wimbledon","grass","eastbourne","birmingham",
+        "bad homburg","rosmalen","hertogenbosch","nottingham"]): return "grass"
+    if any(k in n for k in ["indoor","doha","dubai","abu dhabi","st. petersburg",
+        "linz","luxembourg","ostrava","guadalajara indoor"]): return "indoors"
     return "hard"
 
 def _safe_float(txt: str):
@@ -470,167 +500,99 @@ def _wl(txt: str):
     except:
         return None, None
 
-def _parse_match_date(txt: str) -> datetime | None:
-    """
-    Handle tennisexplorer date formats:
-      "19.04."     — DD.MM. only (inject current year)
-      "19.04.2026" — full date
-      "2026-04-19" — ISO
-    """
+def _parse_match_date(txt: str):
     txt = (txt or "").strip()
     if not txt:
         return None
     year = datetime.now().year
     m = re.match(r"^(\d{1,2})\.(\d{1,2})\.$", txt)
     if m:
-        try:
-            return datetime(year, int(m.group(2)), int(m.group(1)))
-        except Exception:
-            return None
+        try:   return datetime(year, int(m.group(2)), int(m.group(1)))
+        except: return None
     for fmt in ("%d.%m.%Y", "%Y-%m-%d", "%d/%m/%Y"):
-        try:
-            return datetime.strptime(txt, fmt)
-        except Exception:
-            continue
+        try:   return datetime.strptime(txt, fmt)
+        except: continue
     return None
 
 def is_allowed_tournament(name: str, check_date: bool = False) -> bool:
-    """
-    Whitelist approach — only pass genuine WTA tour events.
-
-    ALLOW:  tournaments containing a known WTA keyword OR
-            an explicit WTA tier label (WTA, Grand Slam etc.)
-    BLOCK:  ITF, UTR, futures, challengers, W15-W100, and any
-            unrecognised event (avoids random 125K/250 domestic cups)
-
-    ACTIVE WINDOW CHECK (check_date=True):
-        Cross-references the tournament name against the known 2026 calendar
-        windows. If today's date is clearly outside a tournament's window
-        (e.g. Charleston appearing in late April), the match is rejected.
-        Used for tomorrow-fetch validation to catch stale ghost matches.
-    """
     n  = (name or "").strip()
     nl = n.lower()
-
-    if not n:
-        return False
-
-    # Hard blocks — always reject these regardless of anything else
-    if "itf"        in nl: return False
-    if "utr"        in nl: return False
-    if "futures"    in nl: return False
-    if "challenger" in nl: return False
+    if not n: return False
+    if "itf" in nl or "utr" in nl or "futures" in nl or "challenger" in nl: return False
     if _ITF_PREFIXES.search(n): return False
 
-    # Explicit WTA tier labels
-    WTA_LABELS = ("wta", "grand slam", "wimbledon", "us open",
-                  "australian open", "french open", "roland garros")
-    if any(k in nl for k in WTA_LABELS):
-        pass   # still check date window below if requested
-    elif not any(k in nl for k in [
-        # Grand Slams
-        "wimbledon", "us open", "australian open", "french open", "roland",
-        # WTA 1000
-        "indian wells", "miami", "madrid", "rome", "montreal", "toronto",
-        "cincinnati", "beijing", "wuhan", "guangzhou", "doha", "dubai",
-        # WTA 500
-        "abu dhabi", "adelaide", "auckland", "berlin", "birmingham",
-        "bad homburg", "eastbourne", "strasbourg", "lyon", "tokyo",
-        "osaka", "san jose", "washington", "cleveland", "guadalajara",
-        "linz", "ostrava", "chicago",
-        # WTA 250
-        "hobart", "hua hin", "monterrey", "bogota", "budapest",
-        "rabat", "hamburg", "hertogenbosch", "rosmalen", "nottingham",
-        "palermo", "lausanne", "san diego", "granby",
-        "tashkent", "seoul", "zhengzhou", "nanchang", "tianjin",
-        "luxembourg", "tallinn", "porsche", "stuttgart", "charleston",
-        "prague", "bucharest", "istanbul", "marrakech", "estoril",
-        "oeiras", "rouen", "saint-malo",
-    ]):
-        print(f"   FILTER: unrecognised tournament blocked → {n}")
+    WTA_EVENTS = [
+        "wimbledon","us open","australian open","french open","roland",
+        "indian wells","miami","madrid","rome","montreal","toronto",
+        "cincinnati","beijing","wuhan","guangzhou","doha","dubai",
+        "abu dhabi","adelaide","auckland","berlin","birmingham",
+        "bad homburg","eastbourne","strasbourg","lyon","tokyo","osaka",
+        "san jose","washington","guadalajara","linz","ostrava","chicago",
+        "hobart","hua hin","monterrey","bogota","budapest","rabat","hamburg",
+        "hertogenbosch","rosmalen","nottingham","palermo","lausanne",
+        "san diego","granby","tashkent","seoul","zhengzhou","nanchang",
+        "tianjin","luxembourg","tallinn","porsche","stuttgart","charleston",
+        "prague","bucharest","istanbul","marrakech","estoril","oeiras",
+        "rouen","saint-malo",
+        # 2026 additions — missing from original whitelist
+        "brisbane","canberra","manila","philippine","mumbai",
+        "cluj","transylvania","sables","olonne","antalya","megasaray",
+        "midland","dow tennis","singapore",
+    ]
+    WTA_LABELS = ("wta","grand slam","wimbledon","us open","australian open",
+                  "french open","roland garros")
+    if not any(k in nl for k in WTA_EVENTS) and not any(k in nl for k in WTA_LABELS):
+        print(f"   FILTER: unrecognised → {n}")
         return False
 
-    # ── Active window check ───────────────────────────────────────
-    # Each entry: (keyword_in_name, earliest_month, earliest_day,
-    #                                latest_month,  latest_day)
-    # Gives a ±3 day buffer around the real schedule.
-    # Only blocks obvious mismatches — a tournament can appear
-    # 3 days before its start (qualifying) or 3 days after its end.
     if check_date:
         today = datetime.now()
-
-        WINDOWS: list[tuple] = [
-            # (name_keyword,  start_mm, start_dd, end_mm, end_dd)
-            ("charleston",     3, 27,  4,  8),   # late Mar – early Apr
-            ("bogota",         3, 27,  4,  8),   # same week as Charleston
-            ("stuttgart",      4, 10,  4, 22),
-            ("rouen",          4, 10,  4, 22),
-            ("madrid",         4, 17,  5,  6),
-            ("oeiras",         4, 24,  5,  6),
-            ("saint-malo",     4, 24,  5,  6),
-            ("rome",           5,  1,  5, 20),
-            ("strasbourg",     5, 15,  5, 27),
-            ("rabat",          5, 15,  5, 27),
-            ("roland",         5, 22,  6, 10),
-            ("french open",    5, 22,  6, 10),
-            ("birmingham",     6,  5,  6, 17),
-            ("hertogenbosch",  6,  5,  6, 17),
-            ("berlin",         6, 12,  6, 24),
-            ("nottingham",     6, 12,  6, 24),
-            ("bad homburg",    6, 19,  7,  1),
-            ("eastbourne",     6, 19,  7,  1),
-            ("wimbledon",      6, 26,  7, 14),
-            ("iasi",           7, 10,  7, 22),
-            ("hamburg",        7, 17,  7, 29),
-            ("prague",         7, 17,  7, 29),
-            ("washington",     7, 24,  8,  5),
-            ("memphis",        7, 24,  8,  5),
-            ("toronto",        8,  1, 8, 12),
-            ("montreal",       8,  1, 8, 12),
-            ("cincinnati",     8,  8, 8, 20),
-            ("monterrey",      8, 21,  9,  2),
-            ("us open",        8, 28,  9, 15),
-            ("guadalajara",    9, 11,  9, 23),
-            ("beijing",        9, 25, 10, 14),
-            ("wuhan",         10,  9, 10, 21),
-            ("ningbo",        10, 16, 10, 28),
-            ("osaka",         10, 16, 10, 28),
-            ("tokyo",         10, 23, 11,  4),
-            ("guangzhou",     10, 23, 11,  4),
-            ("chennai",       10, 30, 11, 10),
-            ("hong kong",     10, 30, 11, 10),
-            ("singapore",      9, 18,  9, 30),
-            ("seoul",          9, 18,  9, 30),
-            ("doha",           2,  6,  2, 18),
-            ("dubai",          2, 13,  2, 25),
-            ("abu dhabi",      1, 30,  2, 11),
-            ("linz",           1, 30,  2, 11),
-            ("indian wells",   3,  1,  3, 17),
-            ("miami",          3, 14,  3, 31),
-            ("australian open",1, 16,  2,  3),
+        WINDOWS = [
+            ("charleston", 3,27, 4, 8),("bogota",  3,27, 4, 8),
+            ("stuttgart",  4,10, 4,22),("rouen",   4,10, 4,22),
+            ("madrid",     4,17, 5, 6),("oeiras",  4,24, 5, 6),
+            ("saint-malo", 4,24, 5, 6),("rome",    5, 1, 5,20),
+            ("strasbourg", 5,15, 5,27),("rabat",   5,15, 5,27),
+            ("roland",     5,22, 6,10),("french open",5,22,6,10),
+            ("birmingham", 6, 5, 6,17),("hertogenbosch",6,5,6,17),
+            ("berlin",     6,12, 6,24),("nottingham",6,12,6,24),
+            ("bad homburg",6,19, 7, 1),("eastbourne",6,19,7, 1),
+            ("wimbledon",  6,26, 7,14),("hamburg",  7,17, 7,29),
+            ("prague",     7,17, 7,29),("washington",7,24, 8, 5),
+            ("toronto",    8, 1, 8,12),("montreal", 8, 1, 8,12),
+            ("cincinnati", 8, 8, 8,20),("monterrey",8,21, 9, 2),
+            ("us open",    8,28, 9,15),("beijing",  9,25,10,14),
+            ("wuhan",     10, 9,10,21),("tokyo",   10,23,11, 4),
+            ("guangzhou", 10,23,11, 4),("singapore",9,18, 9,30),
+            ("doha",       2, 6, 2,18),("dubai",    2,13, 2,25),
+            ("indian wells",3,1,3,17), ("miami",    3,14, 3,31),
+            ("australian open",1,16,2,3),
+            # 2026 additions
+            ("brisbane",   1, 2, 1,13),("canberra", 1, 2, 1,13),
+            ("auckland",   1, 2, 1,13),("hobart",   1,10, 1,18),
+            ("adelaide",   1,10, 1,18),
+            ("manila",     1,23, 2, 4),("philippine",1,23,2, 4),
+            ("mumbai",     1,30, 2,11),("cluj",     1,30, 2,11),
+            ("transylvania",1,30,2,11),("ostrava",  1,30, 2,11),
+            ("sables",     2,13, 2,25),("olonne",   2,13, 2,25),
+            ("midland",    2,13, 2,25),("dow tennis",2,13,2,25),
+            ("antalya",    2,20, 3,11),("megasaray",2,20, 3,11),
         ]
-
-        for keyword, s_mo, s_day, e_mo, e_day in WINDOWS:
-            if keyword not in nl:
-                continue
-            # Build start/end with 3-day buffer
-            year = today.year
+        for kw, sm, sd, em, ed in WINDOWS:
+            if kw not in nl: continue
             try:
-                start = datetime(year, s_mo, s_day) - timedelta(days=3)
-                end   = datetime(year, e_mo, e_day) + timedelta(days=3)
+                yr = today.year
+                start = datetime(yr, sm, sd) - timedelta(days=3)
+                end   = datetime(yr, em, ed) + timedelta(days=3)
                 if not (start <= today <= end):
-                    print(
-                        f"   FILTER: {n} outside active window "
-                        f"({s_day:02d}/{s_mo:02d}–{e_day:02d}/{e_mo:02d}) → blocked"
-                    )
+                    print(f"   FILTER: {n} outside window → blocked")
                     return False
             except Exception:
-                pass   # date arithmetic edge case — don't block
-            break      # matched a window, no need to check more
-
+                pass
+            break
     return True
 
-_ERROR_TITLES = ("just a moment","access denied","429","too many requests","error 429")
+_ERROR_TITLES = ("just a moment","access denied","429","too many requests")
 
 def _is_error_page(page) -> bool:
     try:
@@ -656,7 +618,7 @@ def _safe_goto(page, url: str, context, retries: int = 2) -> bool:
             err = str(e)
             if any(x in err for x in ("ERR_CONNECTION_RESET","interrupted","net::")):
                 wait_ms = (2 ** attempt) * 4000 + random.randint(1000, 2000)
-                print(f"   ⚠ Connection reset (attempt {attempt+1}) — waiting {wait_ms//1000}s...")
+                print(f"   ⚠ Connection reset ({attempt+1}) — waiting {wait_ms//1000}s...")
                 try:
                     page.wait_for_timeout(wait_ms)
                     page.goto("about:blank", wait_until="domcontentloaded", timeout=5000)
@@ -669,7 +631,106 @@ def _safe_goto(page, url: str, context, retries: int = 2) -> bool:
 
 
 # ══════════════════════════════════════════════════════════════
-# STEP 1 — GET MATCHES
+# SERVE STATS (3-tier)
+# ══════════════════════════════════════════════════════════════
+def _build_ta_name(slug: str, display_name: str) -> str:
+    parts   = (display_name or "").strip().split()
+    surname = parts[0].rstrip(".") if parts else ""
+    initial = parts[1].rstrip(".").upper() if len(parts) >= 2 else ""
+    key     = f"{surname.lower()}_{initial}".rstrip("_")
+    first   = _INITIAL_TO_FIRST.get(key, "")
+    return f"{first}{surname.capitalize()}" if first else surname.capitalize()
+
+def _parse_ta_html(html: str) -> dict:
+    stats = {}
+    for key, pat in (
+        ("serve_win_pct",   re.compile(r"var\s+sp\s*=\s*([\d.]+)")),
+        ("first_serve_pct", re.compile(r"var\s+fsp\s*=\s*([\d.]+)")),
+    ):
+        m = pat.search(html)
+        if m:
+            val = float(m.group(1))
+            stats[key] = round(val / 100.0, 4) if val > 1 else val
+    return stats
+
+def get_serve_stats(slug: str, surface: str, display_name: str = "") -> dict:
+    if slug in _SERVE_STATS:
+        r = _SERVE_STATS[slug]
+        return {"serve_win_pct": r["s"], "first_serve_pct": r["f"], "source": "table"}
+    if display_name and slug not in _ta_live_cache:
+        ta_name = _build_ta_name(slug, display_name)
+        try:
+            resp = _http.get(f"{_TA_BASE}?p={ta_name}", headers=_TA_HEADERS, timeout=5)
+            if resp.status_code == 200:
+                stats = _parse_ta_html(resp.text)
+                _ta_live_cache[slug] = stats
+                if stats:
+                    print(f"   [TA] {display_name}: {round(stats.get('serve_win_pct',0)*100)}%")
+        except Exception:
+            _ta_live_cache[slug] = {}
+    live = _ta_live_cache.get(slug, {})
+    if live.get("serve_win_pct"):
+        return {"serve_win_pct": live["serve_win_pct"],
+                "first_serve_pct": live.get("first_serve_pct", 0.65), "source": "ta_live"}
+    avg = SURFACE_TOUR_AVG_SERVE.get(surface, 0.67)
+    return {"serve_win_pct": avg, "first_serve_pct": 0.65, "source": "avg"}
+
+
+# ══════════════════════════════════════════════════════════════
+# D. HEAD-TO-HEAD SCRAPING
+# ══════════════════════════════════════════════════════════════
+def get_h2h(context, slug1: str, slug2: str, p1_name: str) -> tuple[int, int]:
+    """
+    Scrape /h2h/{slug1}-vs-{slug2}/
+    Returns (p1_wins, total_meetings).
+    Cached per pair. 5s timeout.
+    """
+    key = f"{min(slug1,slug2)}|{max(slug1,slug2)}"
+    if key in _h2h_cache:
+        return _h2h_cache[key]
+
+    page = context.new_page()
+    try:
+        url = f"{BASE}/h2h/{slug1}-vs-{slug2}/"
+        ok  = _safe_goto(page, url, context, retries=1)
+        if not ok:
+            _h2h_cache[key] = (0, 0)
+            return (0, 0)
+
+        # H2H table: table.result  rows with td.t-name containing <strong> for winner
+        rows  = page.query_selector_all("table.result tbody tr")
+        p1_wins = 0
+        total   = 0
+        surname1 = p1_name.split()[0].lower().rstrip(".")
+
+        for row in rows:
+            t_td   = row.query_selector("td.t-name")
+            if not t_td: continue
+            strong = t_td.query_selector("strong")
+            if not strong: continue
+            score_td = row.query_selector("td.tl, td.score")
+            if not score_td or not score_td.inner_text().strip(): continue
+            total += 1
+            if surname1 in strong.inner_text().lower():
+                p1_wins += 1
+
+        result = (p1_wins, total)
+        _h2h_cache[key] = result
+        if total > 0:
+            print(f"   [H2H] {p1_name}: {p1_wins}/{total}")
+        return result
+
+    except Exception as e:
+        print(f"   [H2H] error: {e}")
+        _h2h_cache[key] = (0, 0)
+        return (0, 0)
+    finally:
+        try: page.close()
+        except Exception: pass
+
+
+# ══════════════════════════════════════════════════════════════
+# GET MATCHES
 # ══════════════════════════════════════════════════════════════
 def get_matches(context, day: str = "today", label: str = "") -> list:
     page    = context.new_page()
@@ -678,14 +739,9 @@ def get_matches(context, day: str = "today", label: str = "") -> list:
     print(f"🔍 {tag}Loading matches (day={day})...")
     try:
         if not _safe_goto(page, f"{BASE}/matches/?type=wta-single&day={day}", context):
-            print(f"❌ {tag}Failed to load matches page.")
             return []
         try:
             page.wait_for_selector("td.first.time", timeout=15000)
-        except Exception:
-            pass
-        try:
-            page.wait_for_selector("td.s-color span[title]", timeout=5000)
         except Exception:
             pass
         page.wait_for_timeout(600)
@@ -701,31 +757,26 @@ def get_matches(context, day: str = "today", label: str = "") -> list:
         while i < len(rows) - 1:
             row1 = rows[i]
 
-            # ── Tournament header ────────────────────────────
+            # Tournament header
             try:
                 t_name_td = row1.query_selector("td.t-name")
                 if t_name_td:
-                    player_links = [
-                        l for l in t_name_td.query_selector_all("a")
-                        if "/player/" in (l.get_attribute("href") or "")
-                    ]
+                    player_links = [l for l in t_name_td.query_selector_all("a")
+                                    if "/player/" in (l.get_attribute("href") or "")]
                     if not player_links:
                         a = t_name_td.query_selector("a")
-                        if a:
-                            current_tournament = a.inner_text().strip()
+                        if a: current_tournament = a.inner_text().strip()
                         s = row1.query_selector("td.s-color span[title]")
                         if s:
                             current_surface = _parse_surface(s.get_attribute("title") or "")
                         else:
                             inf = _surface_from_name(current_tournament)
-                            if inf != "unknown":
-                                current_surface = inf
+                            if inf != "unknown": current_surface = inf
                         i += 1
                         continue
             except Exception:
                 pass
 
-            # ── Match row ────────────────────────────────────
             try:
                 time_el = row1.query_selector("td.first.time")
                 p1_el   = row1.query_selector("td.t-name a[href*='/player/']")
@@ -744,37 +795,30 @@ def get_matches(context, day: str = "today", label: str = "") -> list:
                 slug1   = (p1_el.get_attribute("href") or "").strip("/").split("/")[-1]
                 slug2   = (p2_el.get_attribute("href") or "").strip("/").split("/")[-1]
 
-                # ── Date validation ───────────────────────────
-                # td.first.time contains "29.04. 19:00" or just "19:00"
-                # For tomorrow fetches (day="1"), reject matches whose date
-                # doesn't match actual tomorrow — this filters out stale
-                # completed matches from closed tournaments that tennisexplorer
-                # still serves on the &day=1 page.
+                # Date validation for non-today fetches
                 time_raw   = time_el.inner_text().strip()
-                match_time = time_raw   # default display value
-
+                match_time = time_raw
                 if day != "today":
-                    expected = datetime.now() + timedelta(days=int(day) if day.lstrip("-").isdigit() else 1)
-                    # Parse "DD.MM. HH:MM" — extract date part if present
-                    date_match = re.match(r"(\d{1,2})\.(\d{1,2})\.", time_raw)
-                    if date_match:
-                        m_day = int(date_match.group(1))
-                        m_mon = int(date_match.group(2))
-                        if m_day != expected.day or m_mon != expected.month:
-                            print(f"   SKIP (wrong date {m_day:02d}.{m_mon:02d} ≠ expected {expected.day:02d}.{expected.month:02d}): {p1_name} vs {p2_name}")
-                            i += 2
-                            continue
-                        # Strip date prefix from display time
-                        time_part = re.sub(r"^\d{1,2}\.\d{1,2}\.\s*", "", time_raw).strip()
-                        if time_part:
-                            match_time = time_part
+                    try:
+                        expected  = datetime.now() + timedelta(
+                            days=int(day) if day.lstrip("-").isdigit() else 1)
+                        date_match = re.match(r"(\d{1,2})\.(\d{1,2})\.", time_raw)
+                        if date_match:
+                            m_day = int(date_match.group(1))
+                            m_mon = int(date_match.group(2))
+                            if m_day != expected.day or m_mon != expected.month:
+                                i += 2
+                                continue
+                            time_part = re.sub(r"^\d{1,2}\.\d{1,2}\.\s*", "", time_raw).strip()
+                            if time_part: match_time = time_part
+                    except Exception:
+                        pass
 
                 surface = current_surface
                 s_span  = row1.query_selector("td.s-color span[title]")
                 if s_span:
                     parsed = _parse_surface(s_span.get_attribute("title") or "")
-                    if parsed != "unknown":
-                        surface = parsed
+                    if parsed != "unknown": surface = parsed
 
                 oc      = row1.query_selector_all("td.course")
                 odds_p1 = _safe_float(oc[0].inner_text()) if len(oc) > 0 else None
@@ -818,25 +862,22 @@ def get_matches(context, day: str = "today", label: str = "") -> list:
 
 
 # ══════════════════════════════════════════════════════════════
-# STEP 2 — PLAYER DATA
+# PLAYER DATA
+# Improvements:
+#   B. Rolling 12-month surface W/L from match history (not annual table)
+#   C. Streak: collect all completed rows first, then count from most recent
+#   A. Seed ELO from scraped results on first encounter
 # ══════════════════════════════════════════════════════════════
 def get_player_data(context, slug: str, display_name: str,
                     surface: str = "hard", page=None) -> dict:
     if slug in _player_cache:
         return _player_cache[slug]
 
-    # Serve stats: static table or tour average — no network call needed
-    serve = get_serve_stats(slug, surface, display_name)
-    src   = serve["source"]
-    print(f"   Fetching {display_name} ({slug})  [serve src={src}]...")
-
     default = {
         "rank": 500, "sw": {}, "sl": {},
         "recent_wins": 0, "recent_total": 0,
-        "recent_surface_wins": {}, "recent_surface_total": {},
         "streak": 0, "days_rest": 3, "matches_30d": 0,
-        "serve_win_pct":   serve["serve_win_pct"],
-        "first_serve_pct": serve["first_serve_pct"],
+        "serve_win_pct": None, "first_serve_pct": None,
     }
     if not slug:
         return default
@@ -844,11 +885,11 @@ def get_player_data(context, slug: str, display_name: str,
     owns_page = page is None
     if owns_page:
         page = context.new_page()
+    print(f"   Fetching {display_name} ({slug})...")
 
     try:
         ok = _safe_goto(page, f"{BASE}/player/{slug}/", context, retries=1)
         if not ok or _is_error_page(page):
-            print(f"   ❌ Could not load {display_name} — using defaults")
             return default
         try:
             page.wait_for_selector("table.plDetail", timeout=5000)
@@ -868,56 +909,39 @@ def get_player_data(context, slug: str, display_name: str,
         except Exception as e:
             print(f"   rank err: {e}")
 
-        # ── Surface W/L (2-year weighted) ─────────────────────
-        sw, sl = {}, {}
-        try:
-            btables = page.query_selector_all("table.result.balance")
-            if btables:
-                tbody_rows = btables[0].query_selector_all("tbody tr")
-                for yr_idx, weight in [(0, 2), (1, 1)]:
-                    if yr_idx >= len(tbody_rows):
-                        break
-                    cells = tbody_rows[yr_idx].query_selector_all("td")
-                    for surf, col in SURFACE_COL.items():
-                        if col >= len(cells):
-                            continue
-                        w, l = _wl(cells[col].inner_text())
-                        if w is None:
-                            continue
-                        sw[surf] = sw.get(surf, 0) + w * weight
-                        sl[surf] = sl.get(surf, 0) + l * weight
-        except Exception as e:
-            print(f"   balance err: {e}")
+        # ── B. Rolling 12-month surface W/L from match history ─
+        # More reliable than annual balance table early in the season
+        sw, sl    = {}, {}
+        elo_seeds = []   # (won, opp_slug) for ELO seeding
+        today_dt  = datetime.now()
+        cutoff_12m = today_dt - timedelta(days=365)
 
-        # ── Recent form + streak + fatigue ────────────────────
-        recent_wins = recent_total = streak = matches_30d = 0
-        days_rest   = 3
-        streak_locked = False
-        recent_surface_wins  = {}
-        recent_surface_total = {}
-        today_dt = datetime.now()
-
+        # Build name parts for win detection
         name_parts = display_name.lower().split() if display_name else []
         first_nm   = name_parts[0].rstrip(".") if name_parts else ""
         last_nm    = name_parts[-1].rstrip(".") if len(name_parts) > 1 else ""
+
+        # ── C. Reliable streak — collect completed rows first ──
+        completed_rows = []
 
         try:
             year = today_dt.year
             mdiv = (page.query_selector(f"div#matches-{year}-1-data") or
                     page.query_selector(f"div#matches-{year-1}-1-data"))
             if mdiv:
-                for idx, mrow in enumerate(
-                    mdiv.query_selector_all("tr.one, tr.two")[:20]
-                ):
+                for mrow in mdiv.query_selector_all("tr.one, tr.two")[:30]:
                     t_td = mrow.query_selector("td.t-name")
-                    if not t_td:
-                        continue
+                    if not t_td: continue
                     strong = t_td.query_selector("strong")
-                    if not strong:
-                        continue
+                    if not strong: continue
                     score_td = mrow.query_selector("td.score, td.tl")
                     if not score_td or not score_td.inner_text().strip():
-                        continue
+                        continue  # upcoming — skip
+
+                    date_td = (mrow.query_selector("td.date") or
+                               mrow.query_selector("td.first.date") or
+                               mrow.query_selector("td:first-child"))
+                    match_date = _parse_match_date(date_td.inner_text()) if date_td else None
 
                     s_span = mrow.query_selector("td.s-color span[title]")
                     m_surf = _parse_surface(s_span.get_attribute("title") if s_span else "")
@@ -928,50 +952,87 @@ def get_player_data(context, slug: str, display_name: str,
                         if last_nm else first_nm in strong_txt
                     )
 
-                    # streak_locked checked BEFORE incrementing (bug fix)
-                    if not streak_locked:
-                        if idx == 0:
-                            streak = 1 if won else -1
-                        elif won and streak > 0:
-                            streak += 1
-                        elif not won and streak < 0:
-                            streak -= 1
-                        else:
-                            streak_locked = True
-                    streak = max(-10, min(10, streak))
+                    # Get opponent slug for ELO seeding
+                    opp_links = t_td.query_selector_all("a[href*='/player/']")
+                    opp_slug  = ""
+                    for lnk in opp_links:
+                        href = (lnk.get_attribute("href") or "").strip("/").split("/")[-1]
+                        if href != slug:
+                            opp_slug = href
+                            break
 
-                    date_td = (mrow.query_selector("td.date") or
-                               mrow.query_selector("td.first.date") or
-                               mrow.query_selector("td:first-child"))
-                    match_date = _parse_match_date(date_td.inner_text()) if date_td else None
-
-                    if idx == 0 and match_date:
-                        days_rest = max(0, (today_dt - match_date).days)
-                    if match_date and (today_dt - match_date).days <= 30:
-                        matches_30d += 1
-
-                    if won:
-                        recent_wins += 1
-                        recent_surface_wins[m_surf]  = recent_surface_wins.get(m_surf, 0) + 1
-                    recent_total += 1
-                    recent_surface_total[m_surf] = recent_surface_total.get(m_surf, 0) + 1
+                    completed_rows.append({
+                        "won": won, "surf": m_surf,
+                        "date": match_date, "opp_slug": opp_slug,
+                    })
 
         except Exception as e:
-            print(f"   form err: {e}")
+            print(f"   history err: {e}")
+
+        # Process completed rows
+        streak       = 0
+        streak_locked = False
+        days_rest    = 3
+        matches_30d  = 0
+
+        for idx, row in enumerate(completed_rows):
+            won        = row["won"]
+            m_surf     = row["surf"]
+            match_date = row["date"]
+            opp_slug   = row["opp_slug"]
+
+            # C. Streak — now on clean sorted list, no upcoming rows mixed in
+            if not streak_locked:
+                if idx == 0:
+                    streak = 1 if won else -1
+                elif won and streak > 0:
+                    streak += 1
+                elif not won and streak < 0:
+                    streak -= 1
+                else:
+                    streak_locked = True
+            streak = max(-10, min(10, streak))
+
+            # Days rest
+            if idx == 0 and match_date:
+                days_rest = max(0, (today_dt - match_date).days)
+            if match_date and (today_dt - match_date).days <= 30:
+                matches_30d += 1
+
+            # B. Rolling 12-month surface W/L
+            if match_date and match_date >= cutoff_12m:
+                if won:
+                    sw[m_surf] = sw.get(m_surf, 0) + 1
+                else:
+                    sl[m_surf] = sl.get(m_surf, 0) + 1
+
+            # A. Collect for ELO seeding (chronological = reversed list)
+            if opp_slug:
+                elo_seeds.append((won, opp_slug))
+
+        # A. Seed ELO if this is the first time we've seen this player
+        if elo_seeds and slug not in _ELO_DB:
+            _seed_elo_from_history(slug, list(reversed(elo_seeds)), surface)
+
+        # Recent form (last 15 completed matches)
+        recent_slice = completed_rows[:15]
+        recent_wins  = sum(1 for r in recent_slice if r["won"])
+        recent_total = len(recent_slice)
+
+        # Serve stats
+        srv = get_serve_stats(slug, surface, display_name)
 
         data = {
-            "rank":                 rank,
-            "sw":                   sw,
-            "sl":                   sl,
-            "recent_wins":          recent_wins,
-            "recent_total":         recent_total,
-            "recent_surface_wins":  recent_surface_wins,
-            "recent_surface_total": recent_surface_total,
-            "streak":               streak,
-            "days_rest":            days_rest,
-            "matches_30d":          matches_30d,
-            "serve_win_pct":        serve["serve_win_pct"],
-            "first_serve_pct":      serve["first_serve_pct"],
+            "rank":            rank,
+            "sw":              sw,
+            "sl":              sl,
+            "recent_wins":     recent_wins,
+            "recent_total":    recent_total,
+            "streak":          streak,
+            "days_rest":       days_rest,
+            "matches_30d":     matches_30d,
+            "serve_win_pct":   srv["serve_win_pct"],
+            "first_serve_pct": srv["first_serve_pct"],
         }
         _player_cache[slug] = data
         return data
@@ -990,23 +1051,20 @@ def get_player_data(context, slug: str, display_name: str,
 def _prefetch(context, matches):
     seen, uniq = set(), []
     for m in matches[:50]:
-        for sk, nk, surf_key in (("slug1","p1","surface"), ("slug2","p2","surface")):
+        for sk, nk in (("slug1","p1"), ("slug2","p2")):
             s = (m.get(sk) or "").strip()
             if s and s not in seen:
                 seen.add(s)
-                uniq.append((s, m.get(nk) or s, m.get(surf_key, "hard")))
-            if len(uniq) >= PREFETCH_LIMIT:
-                break
-        if len(uniq) >= PREFETCH_LIMIT:
-            break
+                uniq.append((s, m.get(nk) or s, m.get("surface","hard")))
+            if len(uniq) >= PREFETCH_LIMIT: break
+        if len(uniq) >= PREFETCH_LIMIT: break
 
-    if not uniq:
-        return
+    if not uniq: return
     print(f"[PREFETCH] Warming {len(uniq)} players...")
     page   = context.new_page()
     errors = 0
     try:
-        for idx, (slug, name, surface) in enumerate(uniq):
+        for idx, (slug, name, surf) in enumerate(uniq):
             page.wait_for_timeout(random.randint(900, 1600))
             if errors >= 3:
                 print("   ♻ Recreating page...")
@@ -1022,7 +1080,7 @@ def _prefetch(context, matches):
                 continue
             try:
                 page.wait_for_selector("table.plDetail", timeout=5000)
-                get_player_data(context, slug, name, surface=surface, page=page)
+                get_player_data(context, slug, name, surface=surf, page=page)
                 errors = 0
                 print(f"   ✅ [{idx+1}/{len(uniq)}] {name}")
             except Exception as e:
@@ -1034,7 +1092,7 @@ def _prefetch(context, matches):
 
 
 # ══════════════════════════════════════════════════════════════
-# SCORING MODEL
+# F. SCORING MODEL — calibrated sigmoid per surface
 # ══════════════════════════════════════════════════════════════
 def score_player(data: dict, surface: str, slug: str = "") -> float:
     rank      = data.get("rank", 500)
@@ -1047,69 +1105,64 @@ def score_player(data: dict, surface: str, slug: str = "") -> float:
     serve_pct = data.get("serve_win_pct")
     elo_surf  = get_surface_elo(slug, surface) if slug else 1500.0
 
+    # Rank
     rank_score = max(0.0, 1.0 - rank / 500.0)
 
+    # B. Rolling 12-month surface win rate
     w = sw.get(surface, 0)
     l = sl.get(surface, 0)
-    surf_score = (w / (w + l)) if (w + l) >= 5 else 0.5
+    surf_score = (w / (w + l)) if (w + l) >= 4 else 0.5
 
+    # Form + serve blend
     form_score = (rw / rt) if rt >= 4 else 0.5
     if serve_pct is not None:
         form_score = form_score * 0.6 + serve_pct * 0.4
 
-    elo_score    = min(1.0, elo_surf / 2000.0)
+    # A. Surface ELO (now populated from history)
+    elo_score = min(1.0, elo_surf / 2000.0)
+
+    # Streak
     streak_score = 0.5 + max(-0.4, min(0.4, streak * 0.08))
 
-    if   days_rest == 0: fatigue_score = 0.30
-    elif days_rest == 1: fatigue_score = 0.55
-    elif days_rest <= 3: fatigue_score = 0.80
-    elif days_rest <= 7: fatigue_score = 0.70
-    else:                fatigue_score = 0.60
+    # Fatigue
+    if   days_rest == 0: fatigue = 0.30
+    elif days_rest == 1: fatigue = 0.55
+    elif days_rest <= 3: fatigue = 0.80
+    elif days_rest <= 7: fatigue = 0.70
+    else:                fatigue = 0.60
 
     return (
-        rank_score    * 0.30 +
-        surf_score    * 0.25 +
-        form_score    * 0.15 +
-        elo_score     * 0.15 +
-        streak_score  * 0.08 +
-        fatigue_score * 0.07
+        rank_score   * 0.28 +
+        surf_score   * 0.22 +
+        form_score   * 0.15 +
+        elo_score    * 0.18 +   # increased — now has real data
+        streak_score * 0.10 +   # increased — streak is now reliable
+        fatigue      * 0.07
     )
 
 
+def win_prob(s1: float, s2: float, surface: str = "hard") -> float:
+    """F. Surface-calibrated sigmoid."""
+    k = SURFACE_SIGMOID_K.get(surface, 4.0)
+    return 1.0 / (1.0 + math.exp(-k * (s1 - s2)))
+
+
 def h2h_adjustment(prob: float, h2h_wins: int, h2h_total: int) -> float:
-    if h2h_total < 2:
-        return prob
+    if h2h_total < 2: return prob
     weight   = min(0.08, h2h_total * 0.008)
     adjusted = prob * (1 - weight) + (h2h_wins / h2h_total) * weight
     return max(0.10, min(0.90, adjusted))
 
 
-def odds_blend(model_prob: float, odds_p1, odds_p2) -> tuple:
-    if not odds_p1 or not odds_p2:
-        return model_prob, 1.0
-    raw_p1    = 1.0 / odds_p1
-    raw_p2    = 1.0 / odds_p2
-    total     = raw_p1 + raw_p2
-    market_p1 = raw_p1 / total
-    gap       = abs(model_prob - market_p1)
-    conf_mult = 0.75 if gap > 0.20 else (0.90 if gap > 0.10 else 1.00)
-    return model_prob * 0.70 + market_p1 * 0.30, conf_mult
-
-
-def win_prob(s1: float, s2: float) -> float:
-    return 1.0 / (1.0 + math.exp(-4.0 * (s1 - s2)))
-
-def confidence_pct(prob: float, mult: float = 1.0) -> int:
-    base = 50 + abs(prob - 0.5) * 120
-    return int(min(80, base * mult))
-
 def market_edge(model_prob: float, fav_odds, other_odds=None) -> float:
-    if not fav_odds or fav_odds <= 1.0:
-        return 0.0
+    if not fav_odds or fav_odds <= 1.0: return 0.0
     raw_fav   = 1.0 / fav_odds
     raw_other = 1.0 / other_odds if other_odds else None
     fair_fav  = raw_fav / (raw_fav + raw_other) if raw_other else raw_fav
     return round(model_prob - fair_fav, 4)
+
+def confidence_pct(prob: float) -> int:
+    return int(min(80, 50 + abs(prob - 0.5) * 120))
 
 def grade(conf: int) -> str:
     return "HIGH" if conf >= 70 else ("MEDIUM" if conf >= 65 else "LOW")
@@ -1126,14 +1179,12 @@ def _is_bo5(tournament: str) -> bool:
     return any(x in t for x in ["wimbledon","us open","australian","french","roland"])
 
 def _predict_sets(conf: int, bo5: bool) -> str:
-    if bo5:
-        return "3-0" if conf >= 75 else ("3-1" if conf >= 67 else "3-2")
+    if bo5: return "3-0" if conf >= 75 else ("3-1" if conf >= 67 else "3-2")
     return "2-0" if conf >= 73 else "2-1"
 
 def _pred_games(sets_str: str, surface: str) -> int:
     try:
-        w = int(sets_str.split("-")[0])
-        l = int(sets_str.split("-")[1])
+        w = int(sets_str.split("-")[0]); l = int(sets_str.split("-")[1])
         return round(SURFACE_AVG_GAMES.get(surface, 9.8) * (w + l))
     except Exception:
         return 22
@@ -1163,8 +1214,8 @@ def _key_factor(d1: dict, d2: dict, p1: str, p2: str, surface: str) -> str:
         if s2 > s1 + 0.08: return f"{p2} serve dominates on {surface}"
     sw1 = d1.get("sw",{}).get(surface,0); sl1 = d1.get("sl",{}).get(surface,0)
     sw2 = d2.get("sw",{}).get(surface,0); sl2 = d2.get("sl",{}).get(surface,0)
-    r1  = sw1/(sw1+sl1) if (sw1+sl1) >= 5 else None
-    r2  = sw2/(sw2+sl2) if (sw2+sl2) >= 5 else None
+    r1  = sw1/(sw1+sl1) if (sw1+sl1) >= 4 else None
+    r2  = sw2/(sw2+sl2) if (sw2+sl2) >= 4 else None
     if r1 and r2:
         if r1 > r2 + 0.15: return f"{p1} dominant on {surface} ({round(r1*100)}% win rate)"
         if r2 > r1 + 0.15: return f"{p2} dominant on {surface} ({round(r2*100)}% win rate)"
@@ -1174,10 +1225,8 @@ def _key_factor(d1: dict, d2: dict, p1: str, p2: str, surface: str) -> str:
     st1, st2 = d1.get("streak",0), d2.get("streak",0)
     if st1 >= 4: return f"{p1} on a {st1}-win streak"
     if st2 >= 4: return f"{p2} on a {st2}-win streak"
-    return {"clay":"Clay rewards baseline stamina",
-            "grass":"Grass favours big servers",
-            "indoors":"Indoor slightly boosts serving",
-            "hard":"Recent form decides"}.get(surface, "Form decides")
+    return {"clay":"Clay rewards baseline stamina","grass":"Grass favours big servers",
+            "indoors":"Indoor boosts serving","hard":"Recent form decides"}.get(surface,"Form decides")
 
 
 # ══════════════════════════════════════════════════════════════
@@ -1185,54 +1234,50 @@ def _key_factor(d1: dict, d2: dict, p1: str, p2: str, surface: str) -> str:
 # ══════════════════════════════════════════════════════════════
 def evaluate_matches(matches: list, context) -> list:
     picks = []
-    tag   = "TODAY"
 
     for m in matches[:30]:
         try:
-            print(f"\n── [{tag}] {m['p1']} vs {m['p2']}  [{m['surface']}]  {m['tournament']}")
+            print(f"\n── {m['p1']} vs {m['p2']}  [{m['surface']}]  {m['tournament']}")
 
             d1 = get_player_data(context, m["slug1"], m["p1"], m["surface"])
             d2 = get_player_data(context, m["slug2"], m["p2"], m["surface"])
 
             s1   = score_player(d1, m["surface"], m["slug1"])
             s2   = score_player(d2, m["surface"], m["slug2"])
-            prob = win_prob(s1, s2)
+            prob = win_prob(s1, s2, m["surface"])   # F. surface-calibrated
 
-            h2h_key      = f"{min(m['slug1'],m['slug2'])}_{max(m['slug1'],m['slug2'])}"
-            h2h_w, h2h_t = _h2h_cache.get(h2h_key, (0, 0))
-            prob         = h2h_adjustment(prob, h2h_w, h2h_t)
+            # D. H2H adjustment
+            h2h_w, h2h_t = get_h2h(context, m["slug1"], m["slug2"], m["p1"])
+            prob = h2h_adjustment(prob, h2h_w, h2h_t)
 
-            blended, conf_mult = odds_blend(prob, m["odds_p1"], m["odds_p2"])
-            conf       = confidence_pct(blended, conf_mult)
-            favourite  = m["p1"] if blended > 0.5 else m["p2"]
-            fav_prob   = max(blended, 1 - blended)
-            fav_odds   = m["odds_p1"] if blended > 0.5 else m["odds_p2"]
-            other_odds = m["odds_p2"] if blended > 0.5 else m["odds_p1"]
-            edge       = market_edge(fav_prob, fav_odds, other_odds)
+            conf       = confidence_pct(prob)
             pick_grade = grade(conf)
+            favourite  = m["p1"] if prob > 0.5 else m["p2"]
+            fav_prob   = max(prob, 1 - prob)
+            fav_odds   = m["odds_p1"] if prob > 0.5 else m["odds_p2"]
+            other_odds = m["odds_p2"] if prob > 0.5 else m["odds_p1"]
+            edge       = market_edge(fav_prob, fav_odds, other_odds)
 
             print(
-                f"   {m['p1']:22s} rank={d1['rank']:>3}  streak={d1['streak']:+d}"
-                f"  rest={d1['days_rest']}d  score={s1:.3f}\n"
-                f"   {m['p2']:22s} rank={d2['rank']:>3}  streak={d2['streak']:+d}"
-                f"  rest={d2['days_rest']}d  score={s2:.3f}\n"
-                f"   H2H {h2h_w}/{h2h_t}  prob={blended:.3f}  "
-                f"conf={conf}%  edge={edge:+.3f}  grade={pick_grade}"
+                f"   {m['p1']:22s} rank={d1['rank']:>3}  elo={get_surface_elo(m['slug1'],m['surface']):.0f}"
+                f"  streak={d1['streak']:+d}  rest={d1['days_rest']}d  score={s1:.3f}\n"
+                f"   {m['p2']:22s} rank={d2['rank']:>3}  elo={get_surface_elo(m['slug2'],m['surface']):.0f}"
+                f"  streak={d2['streak']:+d}  rest={d2['days_rest']}d  score={s2:.3f}\n"
+                f"   H2H {h2h_w}/{h2h_t}  prob={prob:.3f}  conf={conf}%  "
+                f"edge={edge:+.3f}  grade={pick_grade}"
             )
 
-            if conf < 65:
-                print(f"   SKIP: conf {conf}%"); continue
-            if abs(blended - 0.5) < 0.07:
-                print(f"   SKIP: too close"); continue
+            # Pure model gate — only skip if model itself is undecided
+            if abs(prob - 0.5) < 0.05:
+                print(f"   SKIP: model too close ({s1:.3f} vs {s2:.3f})")
+                continue
 
             bo5        = _is_bo5(m["tournament"])
             pred_sets  = _predict_sets(conf, bo5)
             pred_games = _pred_games(pred_sets, m["surface"])
             ou_val     = _ou_line(bo5)
-
-            # Serve label — show (avg) tag so user knows when it's estimated
-            srv_data1 = get_serve_stats(m["slug1"], m["surface"], m["p1"])
-            srv_data2 = get_serve_stats(m["slug2"], m["surface"], m["p2"])
+            srv1 = get_serve_stats(m["slug1"], m["surface"], m["p1"])
+            srv2 = get_serve_stats(m["slug2"], m["surface"], m["p2"])
 
             picks.append({
                 "m": m, "d1": d1, "d2": d2,
@@ -1242,16 +1287,17 @@ def evaluate_matches(matches: list, context) -> list:
                 "edge": edge,
                 "streak1":    d1.get("streak", 0),
                 "streak2":    d2.get("streak", 0),
+                "elo1":       get_surface_elo(m["slug1"], m["surface"]),
+                "elo2":       get_surface_elo(m["slug2"], m["surface"]),
+                "h2h":        f"{h2h_w}/{h2h_t}",
                 "pred_sets":  pred_sets,
                 "pred_games": pred_games,
                 "over_under": ("Over" if pred_games >= ou_val else "Under") + f" {ou_val}",
                 "handicap":   _set_handicap(conf, favourite),
-                "serve1":     _serve_label(srv_data1["serve_win_pct"], m["surface"],
-                                           srv_data1["first_serve_pct"],
-                                           srv_data1["source"]),
-                "serve2":     _serve_label(srv_data2["serve_win_pct"], m["surface"],
-                                           srv_data2["first_serve_pct"],
-                                           srv_data2["source"]),
+                "serve1":     _serve_label(srv1["serve_win_pct"], m["surface"],
+                                           srv1["first_serve_pct"], srv1["source"]),
+                "serve2":     _serve_label(srv2["serve_win_pct"], m["surface"],
+                                           srv2["first_serve_pct"], srv2["source"]),
                 "key_factor": _key_factor(d1, d2, m["p1"], m["p2"], m["surface"]),
             })
 
@@ -1262,7 +1308,7 @@ def evaluate_matches(matches: list, context) -> list:
 
 
 # ══════════════════════════════════════════════════════════════
-# FORMAT ONE PICK
+# FORMAT PICK
 # ══════════════════════════════════════════════════════════════
 def format_pick(pk: dict) -> str:
     m        = pk["m"]
@@ -1270,6 +1316,7 @@ def format_pick(pk: dict) -> str:
     odds_str = f" @ {pk['winner_odds']}" if pk["winner_odds"] else ""
     bar      = "█" * (pk["conf"] // 10) + "░" * (10 - pk["conf"] // 10)
     rnd      = f"  · {m['round']}" if m.get("round") else ""
+    h2h_str  = f"  H2H: {pk['h2h']}" if pk.get("h2h","0/0") != "0/0" else ""
     return (
         f"─────────────────────────\n"
         f"🏟  {m['tournament']}  ({m['surface'].title()}){rnd}\n"
@@ -1277,6 +1324,7 @@ def format_pick(pk: dict) -> str:
         f"{icon} {pk['grade']}  ✅  {pk['winner']}{odds_str}\n"
         f"[{bar}] {pk['conf']}%\n"
         f"Ranks: #{pk['d1']['rank']} vs #{pk['d2']['rank']}\n"
+        f"ELO: {pk['elo1']:.0f} vs {pk['elo2']:.0f}{h2h_str}\n"
         f"Scores: {pk['s1']:.2f} vs {pk['s2']:.2f}\n"
         f"Streak: {pk['streak1']:+d} vs {pk['streak2']:+d}\n"
         f"📊 Sets: {pk['pred_sets']}  |  {pk['over_under']} games\n"
@@ -1291,24 +1339,30 @@ def format_pick(pk: dict) -> str:
 # MAIN
 # ══════════════════════════════════════════════════════════════
 def run():
+    if RUN_MODE == "calibrate":
+        run_calibration()
+        return
+
     t0 = time.time()
     pw, browser, context = launch()
 
     try:
-        # ── TODAY ────────────────────────────────────────────
-        today_matches = get_matches(context, day="today", label="TODAY")
-        if not today_matches:
+        # Auto-resolve yesterday's results on daily_reset run
+        if RUN_MODE == "daily_reset":
+            _auto_resolve_yesterday(context)
+
+        matches = get_matches(context, day="today", label="TODAY")
+        if not matches:
             print("❌ No matches found today.")
             send_telegram("No WTA matches found today.")
             return
 
-        _prefetch(context, today_matches)
-        today_raw   = evaluate_matches(today_matches, context)
-        today_picks = apply_mode_filters(today_raw)
-        # HIGH picks first, then MEDIUM — both sorted by conf descending within tier
-        today_picks.sort(key=lambda x: (0 if x["grade"] == "HIGH" else 1, -x["conf"]))
+        _prefetch(context, matches)
+        raw   = evaluate_matches(matches, context)
+        picks = apply_mode_filters(raw)
+        picks.sort(key=lambda x: (0 if x["grade"] == "HIGH" else 1, -x["conf"]))
 
-        if not today_picks:
+        if not picks:
             print(f"[{RUN_MODE.upper()}] No qualifying picks today.")
             return
 
@@ -1319,13 +1373,13 @@ def run():
         }.get(RUN_MODE, "")
 
         today_str = datetime.now(WAT).strftime("%A %d %B %Y")
-        lines     = [f"🎾 WTA ENGINE v7  {mode_label}\n📅 {today_str}\n"]
+        lines     = [f"🎾 WTA ENGINE v8  {mode_label}\n📅 {today_str}\n"]
 
-        has_medium = any(pk["grade"] == "MEDIUM" for pk in today_picks)
-        has_high   = any(pk["grade"] == "HIGH"   for pk in today_picks)
-
+        has_medium = any(pk["grade"] == "MEDIUM" for pk in picks)
+        has_high   = any(pk["grade"] == "HIGH"   for pk in picks)
         prev_grade = None
-        for pk in today_picks[:6]:
+
+        for pk in picks[:6]:
             if has_high and has_medium and prev_grade == "HIGH" and pk["grade"] == "MEDIUM":
                 lines.append("── ⚡ medium confidence ──\n")
             lines.append(format_pick(pk))
@@ -1337,13 +1391,220 @@ def run():
         print("\n" + msg)
         send_telegram(msg)
 
+        # E. Log picks for calibration tracking
+        log_picks(picks[:6])
+
         if should_mark_sent():
-            mark_as_sent(today_picks[:6])
+            mark_as_sent(picks[:6])
+
+        # Persist H2H cache after each run
+        _save_h2h_disk()
 
     finally:
         browser.close()
         pw.stop()
         print(f"\n⚡ Done in {round(time.time() - t0, 1)}s")
+
+
+# ══════════════════════════════════════════════════════════════
+# H2H DISK CACHE — persists between runs
+# ══════════════════════════════════════════════════════════════
+_H2H_FILE = os.path.join(_DIR, "h2h_cache.json")
+
+def _load_h2h_disk() -> dict:
+    try:
+        with open(_H2H_FILE) as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+def _save_h2h_disk():
+    try:
+        with open(_H2H_FILE, "w") as f:
+            json.dump(_h2h_cache, f, indent=2)
+    except Exception as e:
+        print(f"[WARN] h2h_cache save failed: {e}")
+
+# Pre-load H2H cache from disk at startup
+_h2h_cache.update(_load_h2h_disk())
+
+
+# ══════════════════════════════════════════════════════════════
+# AUTO-RESOLVE YESTERDAY'S PICKS + UPDATE ELO
+#
+# Called on daily_reset (1am WAT). Scrapes yesterday's completed
+# results from /results/?type=wta-single to:
+#   1. Mark outcomes.json picks as "correct" or "wrong"
+#   2. Call update_surface_elo() for each completed match
+#   3. Auto-tune SURFACE_SIGMOID_K based on recent calibration
+# ══════════════════════════════════════════════════════════════
+def _auto_resolve_yesterday(context):
+    """Scrape yesterday's WTA results and update outcomes + ELO."""
+    print("\n[AUTO-RESOLVE] Checking yesterday\'s results...")
+    page = context.new_page()
+    try:
+        ok = _safe_goto(page, f"{BASE}/results/?type=wta-single&day=-1", context, retries=1)
+        if not ok:
+            print("  [AUTO-RESOLVE] Could not load results page.")
+            return
+
+        try:
+            page.wait_for_selector("table.result", timeout=10000)
+        except Exception:
+            return
+
+        # Parse result rows — same two-row structure as matches page
+        # but winner row has td.t-name with <strong> wrapping winner name
+        rows = page.query_selector_all("tr")
+        results = []   # (winner_slug, loser_slug, surface)
+
+        current_surface = "hard"
+        i = 0
+        while i < len(rows) - 1:
+            row1 = rows[i]
+
+            # Surface from header
+            try:
+                t_name_td = row1.query_selector("td.t-name")
+                if t_name_td:
+                    pl = [l for l in t_name_td.query_selector_all("a")
+                          if "/player/" in (l.get_attribute("href") or "")]
+                    if not pl:
+                        s = row1.query_selector("td.s-color span[title]")
+                        if s:
+                            current_surface = _parse_surface(s.get_attribute("title") or "")
+                        i += 1
+                        continue
+            except Exception:
+                pass
+
+            try:
+                p1_el = row1.query_selector("td.t-name a[href*=\'/player/\']")
+                if not p1_el:
+                    i += 1
+                    continue
+                row2  = rows[i + 1]
+                p2_el = row2.query_selector("td.t-name a[href*=\'/player/\']")
+                if not p2_el:
+                    i += 1
+                    continue
+
+                slug1 = (p1_el.get_attribute("href") or "").strip("/").split("/")[-1]
+                slug2 = (p2_el.get_attribute("href") or "").strip("/").split("/")[-1]
+
+                # Winner is the row that has <strong> in td.t-name
+                strong1 = row1.query_selector("td.t-name strong")
+                strong2 = row2.query_selector("td.t-name strong")
+
+                if strong1:
+                    results.append((slug1, slug2, current_surface))
+                elif strong2:
+                    results.append((slug2, slug1, current_surface))
+
+                i += 2
+            except Exception:
+                i += 1
+
+        print(f"  [AUTO-RESOLVE] Found {len(results)} completed results")
+
+        # Update ELO for each result
+        for winner_slug, loser_slug, surface in results:
+            if winner_slug and loser_slug:
+                update_surface_elo(winner_slug, loser_slug, surface)
+
+        # Resolve outcomes.json
+        if results:
+            _resolve_outcomes(results)
+            _autotune_sigmoid()
+
+        # Persist H2H cache
+        _save_h2h_disk()
+
+    except Exception as e:
+        print(f"  [AUTO-RESOLVE] Error: {e}")
+    finally:
+        try: page.close()
+        except Exception: pass
+
+
+def _resolve_outcomes(results: list):
+    """
+    Match scraped results against pending outcomes.json entries.
+    results = [(winner_slug, loser_slug, surface), ...]
+    """
+    outcomes  = _load_outcomes()
+    yesterday = (datetime.now(WAT) - timedelta(days=1)).strftime("%Y-%m-%d")
+    pending   = [o for o in outcomes if o.get("result") is None
+                 and o.get("date") == yesterday]
+
+    if not pending:
+        return
+
+    # Build lookup: winner_slug → loser_slug
+    result_map = {w: l for w, l, _ in results}
+
+    resolved = 0
+    for o in pending:
+        # Get slugs from the match key if we stored them,
+        # otherwise match by name substring against result slugs
+        winner_pred = o.get("winner_pred", "")
+        p1          = o.get("p1", "")
+        p2          = o.get("p2", "")
+
+        # Try to identify which slug is the predicted winner
+        # by matching display name surname against slugs
+        pred_surname = winner_pred.split()[0].lower().rstrip(".") if winner_pred else ""
+
+        for w_slug, l_slug in result_map.items():
+            if pred_surname and pred_surname in w_slug:
+                o["result"]  = "correct"
+                o["winner_actual"] = w_slug
+                resolved += 1
+                break
+            elif pred_surname and pred_surname in l_slug:
+                o["result"]  = "wrong"
+                o["winner_actual"] = w_slug
+                resolved += 1
+                break
+
+    _save_outcomes(outcomes)
+    print(f"  [AUTO-RESOLVE] Resolved {resolved}/{len(pending)} yesterday\'s picks")
+
+
+def _autotune_sigmoid():
+    """
+    Adjust SURFACE_SIGMOID_K based on recent calibration data.
+    Logic: if model is over-confident on a surface (predicted high prob
+    but wrong more than expected), reduce k. If under-confident, increase k.
+    Only adjusts when >= 20 resolved outcomes exist per surface.
+    Max adjustment per run: ±0.2
+    """
+    outcomes = [o for o in _load_outcomes()
+                if o.get("result") in ("correct", "wrong")]
+    if len(outcomes) < 30:
+        return
+
+    for surf in ("clay", "hard", "grass", "indoors"):
+        ss = [o for o in outcomes if o.get("surface") == surf]
+        if len(ss) < 20:
+            continue
+
+        # Expected calibration: avg(prob) should ≈ accuracy
+        avg_prob = sum(o["prob"] for o in ss) / len(ss)
+        accuracy = sum(1 for o in ss if o["result"] == "correct") / len(ss)
+        gap      = avg_prob - accuracy   # positive = over-confident
+
+        old_k = SURFACE_SIGMOID_K.get(surf, 4.0)
+        # Over-confident → lower k (softer sigmoid = less extreme probs)
+        # Under-confident → raise k
+        adjustment = max(-0.2, min(0.2, -gap * 1.5))
+        new_k      = round(max(2.0, min(8.0, old_k + adjustment)), 2)
+
+        if new_k != old_k:
+            SURFACE_SIGMOID_K[surf] = new_k
+            print(f"  [AUTOTUNE] {surf}: k {old_k} → {new_k}  "
+                  f"(avg_prob={avg_prob:.2f}, acc={accuracy:.2f})")
+
 
 
 if __name__ == "__main__":
