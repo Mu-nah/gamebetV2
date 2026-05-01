@@ -34,5 +34,17 @@
   },
   "blinkova": {
     "hard": 1695.11
+  },
+  "uchijima": {
+    "hard": 1769.07
+  },
+  "costoulas": {
+    "hard": 1779.04
+  },
+  "valentova": {
+    "hard": 1710.56
+  },
+  "tagger-1a5b1": {
+    "hard": 1751.29
   }
 }
