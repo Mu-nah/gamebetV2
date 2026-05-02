@@ -93,89 +93,6 @@ SURFACE_SIGMOID_K = {
 }
 
 
-# ══════════════════════════════════════════════════════════════
-# STATIC SERVE STATS TABLE (2024-25 season averages)
-# ══════════════════════════════════════════════════════════════
-_SERVE_STATS: dict[str, dict] = {
-    "swiatek":          {"s": 0.700, "f": 0.680},
-    "sabalenka":        {"s": 0.730, "f": 0.640},
-    "gauff":            {"s": 0.680, "f": 0.650},
-    "rybakina":         {"s": 0.740, "f": 0.660},
-    "pegula":           {"s": 0.670, "f": 0.650},
-    "zheng":            {"s": 0.660, "f": 0.660},
-    "andreeva-7d55d":   {"s": 0.640, "f": 0.640},
-    "paolini":          {"s": 0.650, "f": 0.650},
-    "badosa":           {"s": 0.660, "f": 0.650},
-    "vekic":            {"s": 0.680, "f": 0.660},
-    "kasatkina":        {"s": 0.640, "f": 0.630},
-    "samsonova":        {"s": 0.670, "f": 0.640},
-    "svitolina":        {"s": 0.650, "f": 0.640},
-    "jabeur":           {"s": 0.650, "f": 0.650},
-    "keys":             {"s": 0.720, "f": 0.640},
-    "kostyuk-ea2bf":    {"s": 0.660, "f": 0.660},
-    "krejcikova":       {"s": 0.670, "f": 0.640},
-    "ostapenko":        {"s": 0.680, "f": 0.610},
-    "muchova":          {"s": 0.660, "f": 0.640},
-    "collins":          {"s": 0.710, "f": 0.650},
-    "haddad-maia":      {"s": 0.650, "f": 0.650},
-    "bencic":           {"s": 0.660, "f": 0.650},
-    "cirstea":          {"s": 0.660, "f": 0.640},
-    "maria-8ad07":      {"s": 0.640, "f": 0.640},
-    "andreescu":        {"s": 0.680, "f": 0.640},
-    "vondrousova":      {"s": 0.640, "f": 0.640},
-    "sorribes-tormo":   {"s": 0.620, "f": 0.680},
-    "chwalinska":       {"s": 0.650, "f": 0.640},
-    "montgomery-8a7c9": {"s": 0.660, "f": 0.650},
-    "marcinko":         {"s": 0.640, "f": 0.640},
-    "boulter":          {"s": 0.680, "f": 0.650},
-    "shnaider":         {"s": 0.690, "f": 0.640},
-    "fernandez":        {"s": 0.660, "f": 0.660},
-    "alexandrova":      {"s": 0.670, "f": 0.650},
-    "potapova":         {"s": 0.650, "f": 0.640},
-    "noskova":          {"s": 0.680, "f": 0.640},
-    "navarro":          {"s": 0.660, "f": 0.650},
-    "townsend":         {"s": 0.660, "f": 0.650},
-    "fruhvirtova":      {"s": 0.650, "f": 0.650},
-    "sherif":           {"s": 0.640, "f": 0.650},
-    "kvitova":          {"s": 0.720, "f": 0.640},
-    "halep":            {"s": 0.660, "f": 0.660},
-    "azarenka":         {"s": 0.680, "f": 0.640},
-    "wozniacki":        {"s": 0.650, "f": 0.650},
-    "sakkari":          {"s": 0.670, "f": 0.650},
-    "kontaveit":        {"s": 0.680, "f": 0.650},
-    "krueger":          {"s": 0.650, "f": 0.650},
-    "tomova":           {"s": 0.650, "f": 0.640},
-    "ruse":             {"s": 0.640, "f": 0.650},
-    "niemeier":         {"s": 0.660, "f": 0.640},
-    "linette":          {"s": 0.640, "f": 0.650},
-    "minnen":           {"s": 0.650, "f": 0.650},
-    "burel":            {"s": 0.640, "f": 0.640},
-    "errani":           {"s": 0.590, "f": 0.690},
-    "siegemund":        {"s": 0.640, "f": 0.640},
-    "putintseva":       {"s": 0.640, "f": 0.650},
-    "zarazua":          {"s": 0.650, "f": 0.640},
-    "dolehide":         {"s": 0.660, "f": 0.640},
-    "mcnally":          {"s": 0.650, "f": 0.650},
-    "golubic":          {"s": 0.660, "f": 0.640},
-    "parrizas-diaz":    {"s": 0.630, "f": 0.660},
-    "tauson":           {"s": 0.660, "f": 0.640},
-    "kovinic":          {"s": 0.650, "f": 0.640},
-    "bogdan":           {"s": 0.640, "f": 0.650},
-    "rakhimova":        {"s": 0.650, "f": 0.640},
-    "pera":             {"s": 0.650, "f": 0.650},
-    "hibino":           {"s": 0.640, "f": 0.650},
-    "schmiedlova":      {"s": 0.640, "f": 0.650},
-    "pigato":           {"s": 0.640, "f": 0.640},
-    "gasanova":         {"s": 0.640, "f": 0.640},
-    "grabher":          {"s": 0.650, "f": 0.650},
-    "siniakova":        {"s": 0.660, "f": 0.650},
-    "begu":             {"s": 0.640, "f": 0.650},
-    "bara":             {"s": 0.640, "f": 0.640},
-    "podrez":           {"s": 0.640, "f": 0.640},
-    "kraus-e1937":      {"s": 0.640, "f": 0.650},
-    "zidansek":         {"s": 0.640, "f": 0.640},
-}
-
 _INITIAL_TO_FIRST: dict[str, str] = {
     "swiatek_i":"Iga","sabalenka_a":"Aryna","gauff_c":"Coco",
     "rybakina_e":"Elena","pegula_j":"Jessica","zheng_q":"Qinwen",
@@ -380,6 +297,26 @@ def _match_key(p1: str, p2: str) -> str:
 def is_already_sent(p1: str, p2: str) -> bool:
     return _match_key(p1, p2) in _load_sent().get(_today_wat(), [])
 
+def _real_picks_sent_today() -> bool:
+    """Returns True if at least one real match pick was sent today."""
+    today_entries = _load_sent().get(_today_wat(), [])
+    # Real picks are any key that isn't the status sentinel
+    return any(k != "__status__" for k in today_entries)
+
+def _status_already_sent() -> bool:
+    """Returns True if a status (no-picks) message was already sent today."""
+    return "__status__" in _load_sent().get(_today_wat(), [])
+
+def _mark_status_sent():
+    """Record that a status message was sent today."""
+    sent  = _load_sent()
+    today = _today_wat()
+    sent.setdefault(today, [])
+    if "__status__" not in sent[today]:
+        sent[today].append("__status__")
+    cutoff = (datetime.now(WAT) - timedelta(days=3)).strftime("%Y-%m-%d")
+    _save_sent({k: v for k, v in sent.items() if k >= cutoff})
+
 def mark_as_sent(picks: list):
     sent  = _load_sent()
     today = _today_wat()
@@ -532,12 +469,13 @@ def is_allowed_tournament(name: str, check_date: bool = False) -> bool:
         "hertogenbosch","rosmalen","nottingham","palermo","lausanne",
         "san diego","granby","tashkent","seoul","zhengzhou","nanchang",
         "tianjin","luxembourg","tallinn","porsche","stuttgart","charleston",
-        "prague","bucharest","istanbul","marrakech","estoril","oeiras",
+        "prague","bucharest","marrakech","estoril","oeiras",
         "rouen","saint-malo",
-        # 2026 additions — missing from original whitelist
+        # 2026 additions
         "brisbane","canberra","manila","philippine","mumbai",
         "cluj","transylvania","sables","olonne","antalya","megasaray",
-        "midland","dow tennis","singapore",
+        "midland","dow tennis","singapore","jiujiang","jiangxi",
+        # istanbul removed — downgraded to WTA 125 from 2026 onwards
     ]
     WTA_LABELS = ("wta","grand slam","wimbledon","us open","australian open",
                   "french open","roland garros")
@@ -577,6 +515,8 @@ def is_allowed_tournament(name: str, check_date: bool = False) -> bool:
             ("sables",     2,13, 2,25),("olonne",   2,13, 2,25),
             ("midland",    2,13, 2,25),("dow tennis",2,13,2,25),
             ("antalya",    2,20, 3,11),("megasaray",2,20, 3,11),
+            # Jiujiang/Jiangxi Open = WTA 250, Nov 2-8 (May version is WTA 125 — blocked)
+            ("jiujiang",  10,30,11,11),("jiangxi",  10,30,11,11),
         ]
         for kw, sm, sd, em, ed in WINDOWS:
             if kw not in nl: continue
@@ -653,26 +593,85 @@ def _parse_ta_html(html: str) -> dict:
             stats[key] = round(val / 100.0, 4) if val > 1 else val
     return stats
 
+# Persistent serve cache — avoids re-fetching same player each run
+def _load_serve_cache() -> dict:
+    try:
+        with open(_SERVE_CACHE_FILE) as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+def _save_serve_cache(cache: dict):
+    try:
+        with open(_SERVE_CACHE_FILE, "w") as f:
+            json.dump(cache, f, indent=2)
+    except Exception as e:
+        print(f"[WARN] serve_cache save failed: {e}")
+
+# Load at startup
+_serve_cache: dict = _load_serve_cache()
+
+
 def get_serve_stats(slug: str, surface: str, display_name: str = "") -> dict:
-    if slug in _SERVE_STATS:
-        r = _SERVE_STATS[slug]
-        return {"serve_win_pct": r["s"], "first_serve_pct": r["f"], "source": "table"}
-    if display_name and slug not in _ta_live_cache:
+    """
+    Real-time serve stats from TennisAbstract.
+    Flow:
+      1. Check persistent serve_cache.json (populated from previous runs)
+      2. Fetch live from TennisAbstract (8s timeout)
+      3. Fall back to surface tour average if TA unreachable
+    No static table — all data is live and current-season.
+    Cache persists to disk so the same player is only fetched once per week.
+    """
+    # Check persistent cache first (fresh enough — TA updates weekly)
+    cached = _serve_cache.get(slug)
+    if cached and cached.get("serve_win_pct"):
+        return {
+            "serve_win_pct":   cached["serve_win_pct"],
+            "first_serve_pct": cached.get("first_serve_pct", 0.65),
+            "source":          "ta_cache",
+        }
+
+    # Live fetch from TennisAbstract
+    if display_name:
         ta_name = _build_ta_name(slug, display_name)
         try:
-            resp = _http.get(f"{_TA_BASE}?p={ta_name}", headers=_TA_HEADERS, timeout=5)
+            resp = _http.get(
+                f"{_TA_BASE}?p={ta_name}",
+                headers=_TA_HEADERS,
+                timeout=8,
+            )
             if resp.status_code == 200:
+                # Detect wrong-player page
+                bad = ("no player found", "no results", "<title>error")
+                if any(b in resp.text.lower()[:500] for b in bad):
+                    # Retry with surname only
+                    surname = display_name.split()[0].rstrip(".")
+                    resp = _http.get(
+                        f"{_TA_BASE}?p={surname.capitalize()}",
+                        headers=_TA_HEADERS,
+                        timeout=8,
+                    )
                 stats = _parse_ta_html(resp.text)
-                _ta_live_cache[slug] = stats
-                if stats:
-                    print(f"   [TA] {display_name}: {round(stats.get('serve_win_pct',0)*100)}%")
-        except Exception:
-            _ta_live_cache[slug] = {}
-    live = _ta_live_cache.get(slug, {})
-    if live.get("serve_win_pct"):
-        return {"serve_win_pct": live["serve_win_pct"],
-                "first_serve_pct": live.get("first_serve_pct", 0.65), "source": "ta_live"}
+                if stats.get("serve_win_pct"):
+                    # Persist to cache
+                    _serve_cache[slug] = stats
+                    _save_serve_cache(_serve_cache)
+                    print(
+                        f"   [TA] {display_name}: "
+                        f"serve={round(stats['serve_win_pct']*100)}%  "
+                        f"1st-in={round(stats.get('first_serve_pct',0)*100)}%"
+                    )
+                    return {
+                        "serve_win_pct":   stats["serve_win_pct"],
+                        "first_serve_pct": stats.get("first_serve_pct", 0.65),
+                        "source":          "ta_live",
+                    }
+        except Exception as e:
+            print(f"   [TA] {display_name}: {type(e).__name__}")
+
+    # Tour average fallback
     avg = SURFACE_TOUR_AVG_SERVE.get(surface, 0.67)
+    print(f"   [TA] {display_name}: using tour avg ({round(avg*100)}%)")
     return {"serve_win_pct": avg, "first_serve_pct": 0.65, "source": "avg"}
 
 
@@ -1362,8 +1361,45 @@ def run():
         picks = apply_mode_filters(raw)
         picks.sort(key=lambda x: (0 if x["grade"] == "HIGH" else 1, -x["conf"]))
 
+        # Distinguish why there are no picks:
+        # 1. Model found qualifying picks but all were already sent today (dedup)
+        # 2. Model genuinely found no picks above threshold
+        all_qualified = [pk for pk in raw if pk.get("grade") in ("HIGH", "MEDIUM")]
         if not picks:
-            print(f"[{RUN_MODE.upper()}] No qualifying picks today.")
+            today_str = datetime.now(WAT).strftime("%A %d %B %Y")
+            sent_time = datetime.now(WAT).strftime("%H:%M WAT")
+
+            # If real picks were already sent today, stay silent —
+            # no need to announce "no new signals" after picks went out
+            if _real_picks_sent_today():
+                print(f"[{RUN_MODE.upper()}] Picks already sent today — staying silent.")
+                return
+
+            if all_qualified and RUN_MODE == "normal":
+                # Picks exist but all already sent today — notify once only
+                print(f"[{RUN_MODE.upper()}] All qualifying picks already sent today.")
+                if not _status_already_sent():
+                    send_telegram(
+                        f"🎾 WTA ENGINE v8\n📅 {today_str}\n\n"
+                        f"🔁 No new signals — {len(all_qualified)} qualifying match"
+                        f"{'es' if len(all_qualified) != 1 else ''} already sent today.\n"
+                        f"🕐 {sent_time}"
+                    )
+                    _mark_status_sent()
+                else:
+                    print("   Status already sent today — skipping.")
+            else:
+                # Genuinely no qualifying picks — notify once only
+                print(f"[{RUN_MODE.upper()}] No qualifying picks found today.")
+                if not _status_already_sent():
+                    send_telegram(
+                        f"🎾 WTA ENGINE v8\n📅 {today_str}\n\n"
+                        f"📭 No qualifying picks found for today's matches.\n"
+                        f"🕐 {sent_time}"
+                    )
+                    _mark_status_sent()
+                else:
+                    print("   Status already sent today — skipping.")
             return
 
         mode_label = {
