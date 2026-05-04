@@ -82,5 +82,17 @@
     "grade": "MEDIUM",
     "surface": "clay",
     "result": null
+  },
+  {
+    "key": "Tomljanovic A.|Lombardini M.|2026-05-04",
+    "date": "2026-05-04",
+    "p1": "Tomljanovic A.",
+    "p2": "Lombardini M.",
+    "winner_pred": "Tomljanovic A.",
+    "prob": 0.6279,
+    "conf": 65,
+    "grade": "MEDIUM",
+    "surface": "clay",
+    "result": null
   }
 ]
