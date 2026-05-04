@@ -10,5 +10,77 @@
     "grade": "MEDIUM",
     "surface": "hard",
     "result": null
+  },
+  {
+    "key": "Potapova A.|Begu I.|2026-05-04",
+    "date": "2026-05-04",
+    "p1": "Potapova A.",
+    "p2": "Begu I.",
+    "winner_pred": "Potapova A.",
+    "prob": 0.7593,
+    "conf": 80,
+    "grade": "HIGH",
+    "surface": "clay",
+    "result": null
+  },
+  {
+    "key": "Zarazua R.|Urgesi F.|2026-05-04",
+    "date": "2026-05-04",
+    "p1": "Zarazua R.",
+    "p2": "Urgesi F.",
+    "winner_pred": "Zarazua R.",
+    "prob": 0.7702,
+    "conf": 80,
+    "grade": "HIGH",
+    "surface": "clay",
+    "result": null
+  },
+  {
+    "key": "Ruse E.|Dodin O.|2026-05-04",
+    "date": "2026-05-04",
+    "p1": "Ruse E.",
+    "p2": "Dodin O.",
+    "winner_pred": "Ruse E.",
+    "prob": 0.7267,
+    "conf": 77,
+    "grade": "HIGH",
+    "surface": "clay",
+    "result": null
+  },
+  {
+    "key": "Ricci B.|Korpatsch T.|2026-05-04",
+    "date": "2026-05-04",
+    "p1": "Ricci B.",
+    "p2": "Korpatsch T.",
+    "winner_pred": "Korpatsch T.",
+    "prob": 0.7143,
+    "conf": 75,
+    "grade": "HIGH",
+    "surface": "clay",
+    "result": null
+  },
+  {
+    "key": "Arango E.|Basiletti N.|2026-05-04",
+    "date": "2026-05-04",
+    "p1": "Arango E.",
+    "p2": "Basiletti N.",
+    "winner_pred": "Arango E.",
+    "prob": 0.6917,
+    "conf": 73,
+    "grade": "HIGH",
+    "surface": "clay",
+    "result": null
+  },
+  {
+    "key": "Pedone G.|Waltert S.|2026-05-04",
+    "date": "2026-05-04",
+    "p1": "Pedone G.",
+    "p2": "Waltert S.",
+    "winner_pred": "Waltert S.",
+    "prob": 0.6394,
+    "conf": 66,
+    "grade": "MEDIUM",
+    "surface": "clay",
+    "result": null
   }
 ]
