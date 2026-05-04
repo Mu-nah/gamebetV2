@@ -94,5 +94,41 @@
     "grade": "MEDIUM",
     "surface": "clay",
     "result": null
+  },
+  {
+    "key": "Vekic D.|Falei A.|2026-05-04",
+    "date": "2026-05-04",
+    "p1": "Vekic D.",
+    "p2": "Falei A.",
+    "winner_pred": "Vekic D.",
+    "prob": 0.6831,
+    "conf": 71,
+    "grade": "HIGH",
+    "surface": "clay",
+    "result": null
+  },
+  {
+    "key": "Kudermetova P.|Buyukakcay C.|2026-05-04",
+    "date": "2026-05-04",
+    "p1": "Kudermetova P.",
+    "p2": "Buyukakcay C.",
+    "winner_pred": "Kudermetova P.",
+    "prob": 0.6563,
+    "conf": 68,
+    "grade": "MEDIUM",
+    "surface": "clay",
+    "result": null
+  },
+  {
+    "key": "Maristany Zuleta De Reales G.|Koevermans A.|2026-05-04",
+    "date": "2026-05-04",
+    "p1": "Maristany Zuleta De Reales G.",
+    "p2": "Koevermans A.",
+    "winner_pred": "Koevermans A.",
+    "prob": 0.6414,
+    "conf": 66,
+    "grade": "MEDIUM",
+    "surface": "clay",
+    "result": null
   }
 ]
