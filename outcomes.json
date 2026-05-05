@@ -190,5 +190,17 @@
     "grade": "MEDIUM",
     "surface": "hard",
     "result": null
+  },
+  {
+    "key": "Lachinova A.|Kovinic D.|2026-05-05",
+    "date": "2026-05-05",
+    "p1": "Lachinova A.",
+    "p2": "Kovinic D.",
+    "winner_pred": "Lachinova A.",
+    "prob": 0.6854,
+    "conf": 72,
+    "grade": "HIGH",
+    "surface": "clay",
+    "result": null
   }
 ]
