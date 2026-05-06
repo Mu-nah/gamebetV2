@@ -774,11 +774,32 @@ def get_matches(context, day: str = "today", label: str = "") -> list:
             except Exception:
                 i += 1
 
+        # Filter out matches that have already started
+        # 10-minute buffer so near-start matches still get picked up
+        now_wat  = datetime.now(WAT)
+        filtered = []
+        for m in matches:
+            t  = m.get("time", "")
+            tm = re.match(r"^(\d{1,2}):(\d{2})$", t.strip())
+            if tm:
+                match_dt = now_wat.replace(
+                    hour=int(tm.group(1)), minute=int(tm.group(2)),
+                    second=0, microsecond=0
+                )
+                if (now_wat - match_dt).total_seconds() > 600:
+                    print(f"   SKIP (already started {t}): {m['p1']} vs {m['p2']}")
+                    continue
+            filtered.append(m)
+
+        skipped = len(matches) - len(filtered)
+        if skipped:
+            print(f"   Skipped {skipped} already-started match(es)")
+
     finally:
         page.close()
 
-    print(f"🎾 {tag}Matches parsed: {len(matches)}")
-    return matches
+    print(f"🎾 {tag}Matches parsed: {len(filtered)} (of {len(matches)} total)")
+    return filtered
 
 
 # ══════════════════════════════════════════════════════════════
