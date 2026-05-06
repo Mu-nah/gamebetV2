@@ -346,5 +346,17 @@
     "grade": "HIGH",
     "surface": "clay",
     "result": null
+  },
+  {
+    "key": "Siniakova K.|Boisson L.|2026-05-06",
+    "date": "2026-05-06",
+    "p1": "Siniakova K.",
+    "p2": "Boisson L.",
+    "winner_pred": "Siniakova K.",
+    "prob": 0.6918,
+    "conf": 73,
+    "grade": "HIGH",
+    "surface": "clay",
+    "result": null
   }
 ]
