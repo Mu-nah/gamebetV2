@@ -322,5 +322,29 @@
     "grade": "MEDIUM",
     "surface": "clay",
     "result": null
+  },
+  {
+    "key": "Maristany Zuleta De Reales G.|Hunter S.|2026-05-06",
+    "date": "2026-05-06",
+    "p1": "Maristany Zuleta De Reales G.",
+    "p2": "Hunter S.",
+    "winner_pred": "Hunter S.",
+    "prob": 0.7314,
+    "conf": 77,
+    "grade": "HIGH",
+    "surface": "hard",
+    "result": null
+  },
+  {
+    "key": "Ostapenko J.|Stefanini L.|2026-05-06",
+    "date": "2026-05-06",
+    "p1": "Ostapenko J.",
+    "p2": "Stefanini L.",
+    "winner_pred": "Ostapenko J.",
+    "prob": 0.6732,
+    "conf": 70,
+    "grade": "HIGH",
+    "surface": "clay",
+    "result": null
   }
 ]
