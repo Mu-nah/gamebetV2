@@ -358,5 +358,17 @@
     "grade": "HIGH",
     "surface": "clay",
     "result": null
+  },
+  {
+    "key": "You X.|Zhao C.|2026-05-06",
+    "date": "2026-05-06",
+    "p1": "You X.",
+    "p2": "Zhao C.",
+    "winner_pred": "You X.",
+    "prob": 0.6479,
+    "conf": 67,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
   }
 ]
