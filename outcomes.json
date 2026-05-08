@@ -370,5 +370,29 @@
     "grade": "MEDIUM",
     "surface": "hard",
     "result": null
+  },
+  {
+    "key": "Tubello A.|Kudermetova P.|2026-05-08",
+    "date": "2026-05-08",
+    "p1": "Tubello A.",
+    "p2": "Kudermetova P.",
+    "winner_pred": "Kudermetova P.",
+    "prob": 0.6765,
+    "conf": 71,
+    "grade": "HIGH",
+    "surface": "hard",
+    "result": null
+  },
+  {
+    "key": "Navarro E.|Cocciaretto E.|2026-05-08",
+    "date": "2026-05-08",
+    "p1": "Navarro E.",
+    "p2": "Cocciaretto E.",
+    "winner_pred": "Cocciaretto E.",
+    "prob": 0.6278,
+    "conf": 65,
+    "grade": "MEDIUM",
+    "surface": "clay",
+    "result": null
   }
 ]
