@@ -394,5 +394,29 @@
     "grade": "MEDIUM",
     "surface": "clay",
     "result": null
+  },
+  {
+    "key": "Vekic D.|Maristany Zuleta De Reales G.|2026-05-09",
+    "date": "2026-05-09",
+    "p1": "Vekic D.",
+    "p2": "Maristany Zuleta De Reales G.",
+    "winner_pred": "Vekic D.",
+    "prob": 0.7878,
+    "conf": 80,
+    "grade": "HIGH",
+    "surface": "hard",
+    "result": null
+  },
+  {
+    "key": "Tubello A.|Timofeeva M.|2026-05-09",
+    "date": "2026-05-09",
+    "p1": "Tubello A.",
+    "p2": "Timofeeva M.",
+    "winner_pred": "Timofeeva M.",
+    "prob": 0.6701,
+    "conf": 70,
+    "grade": "HIGH",
+    "surface": "hard",
+    "result": null
   }
 ]
