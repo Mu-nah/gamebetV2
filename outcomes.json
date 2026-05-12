@@ -466,5 +466,17 @@
     "grade": "HIGH",
     "surface": "hard",
     "result": null
+  },
+  {
+    "key": "Burel C.|Korpatsch T.|2026-05-12",
+    "date": "2026-05-12",
+    "p1": "Burel C.",
+    "p2": "Korpatsch T.",
+    "winner_pred": "Korpatsch T.",
+    "prob": 0.758,
+    "conf": 80,
+    "grade": "HIGH",
+    "surface": "hard",
+    "result": null
   }
 ]
