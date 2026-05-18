@@ -637,5 +637,62 @@
   },
   "ferro": {
     "hard": 1765.86
+  },
+  "zvonareva": {
+    "clay": 1776.85
+  },
+  "hercog": {
+    "clay": 1843.5
+  },
+  "papamichail": {
+    "clay": 1812.76
+  },
+  "bulgaru": {
+    "clay": 1640.15
+  },
+  "hontama": {
+    "clay": 1812.54
+  },
+  "inisan": {
+    "clay": 1641.45
+  },
+  "avdeeva-f77e5": {
+    "clay": 1779.51
+  },
+  "von-deichmann": {
+    "clay": 1822.01
+  },
+  "garland-472f9": {
+    "clay": 1704.79
+  },
+  "leonard-8f19c": {
+    "clay": 1770.03
+  },
+  "mrdeza": {
+    "clay": 1516.0
+  },
+  "zidansek": {
+    "clay": 1861.87
+  },
+  "chwalinska": {
+    "clay": 1869.91
+  },
+  "rame": {
+    "clay": 1749.98
+  },
+  "prozorova-04cd5": {
+    "clay": 1818.68
+  },
+  "barthel-1fad0": {
+    "clay": 1823.69
+  },
+  "friedsam": {
+    "clay": 1787.6
+  },
+  "lazaro-garcia": {
+    "clay": 1818.64
+  },
+  "knutson": {
+    "clay": 1810.35
   }
 }

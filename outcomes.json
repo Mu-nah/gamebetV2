@@ -478,5 +478,41 @@
     "grade": "HIGH",
     "surface": "hard",
     "result": null
+  },
+  {
+    "key": "Yaneva E.|Begu I.|2026-05-18",
+    "date": "2026-05-18",
+    "p1": "Yaneva E.",
+    "p2": "Begu I.",
+    "winner_pred": "Yaneva E.",
+    "prob": 0.6739,
+    "conf": 70,
+    "grade": "HIGH",
+    "surface": "clay",
+    "result": null
+  },
+  {
+    "key": "Knutson G.|Trevisan M.|2026-05-18",
+    "date": "2026-05-18",
+    "p1": "Knutson G.",
+    "p2": "Trevisan M.",
+    "winner_pred": "Knutson G.",
+    "prob": 0.6663,
+    "conf": 69,
+    "grade": "MEDIUM",
+    "surface": "clay",
+    "result": null
+  },
+  {
+    "key": "Marcinko P.|Zvonareva V.|2026-05-18",
+    "date": "2026-05-18",
+    "p1": "Marcinko P.",
+    "p2": "Zvonareva V.",
+    "winner_pred": "Marcinko P.",
+    "prob": 0.6417,
+    "conf": 67,
+    "grade": "MEDIUM",
+    "surface": "clay",
+    "result": null
   }
 ]
