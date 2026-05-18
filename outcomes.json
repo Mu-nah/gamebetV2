@@ -514,5 +514,17 @@
     "grade": "MEDIUM",
     "surface": "clay",
     "result": null
+  },
+  {
+    "key": "Stephens S.|Lee C.|2026-05-18",
+    "date": "2026-05-18",
+    "p1": "Stephens S.",
+    "p2": "Lee C.",
+    "winner_pred": "Lee C.",
+    "prob": 0.6288,
+    "conf": 65,
+    "grade": "MEDIUM",
+    "surface": "clay",
+    "result": null
   }
 ]
