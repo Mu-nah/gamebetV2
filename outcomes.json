@@ -526,5 +526,29 @@
     "grade": "MEDIUM",
     "surface": "clay",
     "result": null
+  },
+  {
+    "key": "Tan H.|Thandi K.|2026-05-19",
+    "date": "2026-05-19",
+    "p1": "Tan H.",
+    "p2": "Thandi K.",
+    "winner_pred": "Tan H.",
+    "prob": 0.8138,
+    "conf": 80,
+    "grade": "HIGH",
+    "surface": "clay",
+    "result": null
+  },
+  {
+    "key": "Maristany Zuleta De Reales G.|Belgraver J.|2026-05-19",
+    "date": "2026-05-19",
+    "p1": "Maristany Zuleta De Reales G.",
+    "p2": "Belgraver J.",
+    "winner_pred": "Belgraver J.",
+    "prob": 0.6815,
+    "conf": 71,
+    "grade": "HIGH",
+    "surface": "clay",
+    "result": null
   }
 ]
