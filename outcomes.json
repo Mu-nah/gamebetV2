@@ -550,5 +550,53 @@
     "grade": "HIGH",
     "surface": "clay",
     "result": null
+  },
+  {
+    "key": "Begu I.|Lamens S.|2026-05-20",
+    "date": "2026-05-20",
+    "p1": "Begu I.",
+    "p2": "Lamens S.",
+    "winner_pred": "Lamens S.",
+    "prob": 0.7226,
+    "conf": 76,
+    "grade": "HIGH",
+    "surface": "clay",
+    "result": null
+  },
+  {
+    "key": "Juvan K.|Maristany Zuleta De Reales G.|2026-05-20",
+    "date": "2026-05-20",
+    "p1": "Juvan K.",
+    "p2": "Maristany Zuleta De Reales G.",
+    "winner_pred": "Juvan K.",
+    "prob": 0.6675,
+    "conf": 70,
+    "grade": "HIGH",
+    "surface": "clay",
+    "result": null
+  },
+  {
+    "key": "Stephens S.|Pigato L.|2026-05-20",
+    "date": "2026-05-20",
+    "p1": "Stephens S.",
+    "p2": "Pigato L.",
+    "winner_pred": "Pigato L.",
+    "prob": 0.6521,
+    "conf": 68,
+    "grade": "MEDIUM",
+    "surface": "clay",
+    "result": null
+  },
+  {
+    "key": "Tauson C.|Cristian J.|2026-05-20",
+    "date": "2026-05-20",
+    "p1": "Tauson C.",
+    "p2": "Cristian J.",
+    "winner_pred": "Cristian J.",
+    "prob": 0.6263,
+    "conf": 65,
+    "grade": "MEDIUM",
+    "surface": "clay",
+    "result": null
   }
 ]
