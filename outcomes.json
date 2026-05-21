@@ -598,5 +598,17 @@
     "grade": "MEDIUM",
     "surface": "clay",
     "result": null
+  },
+  {
+    "key": "Romero Gormaz L.|Stephens S.|2026-05-21",
+    "date": "2026-05-21",
+    "p1": "Romero Gormaz L.",
+    "p2": "Stephens S.",
+    "winner_pred": "Romero Gormaz L.",
+    "prob": 0.6432,
+    "conf": 67,
+    "grade": "MEDIUM",
+    "surface": "clay",
+    "result": null
   }
 ]
