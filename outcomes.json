@@ -622,5 +622,29 @@
     "grade": "HIGH",
     "surface": "clay",
     "result": null
+  },
+  {
+    "key": "Volynets K.|Burel C.|2026-05-24",
+    "date": "2026-05-24",
+    "p1": "Volynets K.",
+    "p2": "Burel C.",
+    "winner_pred": "Volynets K.",
+    "prob": 0.8425,
+    "conf": 80,
+    "grade": "HIGH",
+    "surface": "clay",
+    "result": null
+  },
+  {
+    "key": "Bejlek S.|Stephens S.|2026-05-24",
+    "date": "2026-05-24",
+    "p1": "Bejlek S.",
+    "p2": "Stephens S.",
+    "winner_pred": "Bejlek S.",
+    "prob": 0.6862,
+    "conf": 72,
+    "grade": "HIGH",
+    "surface": "clay",
+    "result": null
   }
 ]
