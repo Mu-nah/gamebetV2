@@ -646,5 +646,17 @@
     "grade": "HIGH",
     "surface": "clay",
     "result": null
+  },
+  {
+    "key": "Hibino N.|Bolkvadze M.|2026-05-30",
+    "date": "2026-05-30",
+    "p1": "Hibino N.",
+    "p2": "Bolkvadze M.",
+    "winner_pred": "Hibino N.",
+    "prob": 0.6389,
+    "conf": 66,
+    "grade": "MEDIUM",
+    "surface": "grass",
+    "result": null
   }
 ]
