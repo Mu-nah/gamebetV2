@@ -658,5 +658,29 @@
     "grade": "MEDIUM",
     "surface": "grass",
     "result": null
+  },
+  {
+    "key": "Kozyreva M.|Ngounoue C.|2026-06-07",
+    "date": "2026-06-07",
+    "p1": "Kozyreva M.",
+    "p2": "Ngounoue C.",
+    "winner_pred": "Ngounoue C.",
+    "prob": 0.7623,
+    "conf": 80,
+    "grade": "HIGH",
+    "surface": "hard",
+    "result": null
+  },
+  {
+    "key": "Valdmannova V.|Ishii S.|2026-06-07",
+    "date": "2026-06-07",
+    "p1": "Valdmannova V.",
+    "p2": "Ishii S.",
+    "winner_pred": "Valdmannova V.",
+    "prob": 0.6677,
+    "conf": 70,
+    "grade": "HIGH",
+    "surface": "hard",
+    "result": null
   }
 ]
