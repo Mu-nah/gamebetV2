@@ -682,5 +682,17 @@
     "grade": "HIGH",
     "surface": "hard",
     "result": null
+  },
+  {
+    "key": "Cross K.|Martincova T.|2026-06-08",
+    "date": "2026-06-08",
+    "p1": "Cross K.",
+    "p2": "Martincova T.",
+    "winner_pred": "Cross K.",
+    "prob": 0.6341,
+    "conf": 66,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
   }
 ]
