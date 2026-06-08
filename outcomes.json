@@ -694,5 +694,17 @@
     "grade": "MEDIUM",
     "surface": "hard",
     "result": null
+  },
+  {
+    "key": "Kasatkina D.|Montgomery R.|2026-06-08",
+    "date": "2026-06-08",
+    "p1": "Kasatkina D.",
+    "p2": "Montgomery R.",
+    "winner_pred": "Kasatkina D.",
+    "prob": 0.7212,
+    "conf": 76,
+    "grade": "HIGH",
+    "surface": "grass",
+    "result": null
   }
 ]
