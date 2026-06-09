@@ -706,5 +706,77 @@
     "grade": "HIGH",
     "surface": "grass",
     "result": null
+  },
+  {
+    "key": "Sun L.|McDonald E.|2026-06-09",
+    "date": "2026-06-09",
+    "p1": "Sun L.",
+    "p2": "McDonald E.",
+    "winner_pred": "Sun L.",
+    "prob": 0.7004,
+    "conf": 74,
+    "grade": "HIGH",
+    "surface": "hard",
+    "result": null
+  },
+  {
+    "key": "Shymanovich I.|Tararudee L.|2026-06-09",
+    "date": "2026-06-09",
+    "p1": "Shymanovich I.",
+    "p2": "Tararudee L.",
+    "winner_pred": "Tararudee L.",
+    "prob": 0.69,
+    "conf": 72,
+    "grade": "HIGH",
+    "surface": "hard",
+    "result": null
+  },
+  {
+    "key": "Preston T.|Tan H.|2026-06-09",
+    "date": "2026-06-09",
+    "p1": "Preston T.",
+    "p2": "Tan H.",
+    "winner_pred": "Preston T.",
+    "prob": 0.687,
+    "conf": 72,
+    "grade": "HIGH",
+    "surface": "hard",
+    "result": null
+  },
+  {
+    "key": "Korneeva A.|Naef C.|2026-06-09",
+    "date": "2026-06-09",
+    "p1": "Korneeva A.",
+    "p2": "Naef C.",
+    "winner_pred": "Korneeva A.",
+    "prob": 0.6484,
+    "conf": 67,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
+  },
+  {
+    "key": "Martincova T.|Swan K.|2026-06-09",
+    "date": "2026-06-09",
+    "p1": "Martincova T.",
+    "p2": "Swan K.",
+    "winner_pred": "Swan K.",
+    "prob": 0.6489,
+    "conf": 67,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
+  },
+  {
+    "key": "Bartunkova N.|Vandewinkel H.|2026-06-09",
+    "date": "2026-06-09",
+    "p1": "Bartunkova N.",
+    "p2": "Vandewinkel H.",
+    "winner_pred": "Bartunkova N.",
+    "prob": 0.6273,
+    "conf": 65,
+    "grade": "MEDIUM",
+    "surface": "grass",
+    "result": null
   }
 ]
