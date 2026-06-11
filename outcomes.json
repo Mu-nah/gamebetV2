@@ -838,5 +838,29 @@
     "grade": "MEDIUM",
     "surface": "hard",
     "result": null
+  },
+  {
+    "key": "Montgomery R.|Minnen G.|2026-06-11",
+    "date": "2026-06-11",
+    "p1": "Montgomery R.",
+    "p2": "Minnen G.",
+    "winner_pred": "Minnen G.",
+    "prob": 0.7449,
+    "conf": 79,
+    "grade": "HIGH",
+    "surface": "grass",
+    "result": null
+  },
+  {
+    "key": "Tan H.|Tararudee L.|2026-06-11",
+    "date": "2026-06-11",
+    "p1": "Tan H.",
+    "p2": "Tararudee L.",
+    "winner_pred": "Tararudee L.",
+    "prob": 0.6913,
+    "conf": 72,
+    "grade": "HIGH",
+    "surface": "hard",
+    "result": null
   }
 ]
