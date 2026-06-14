@@ -886,5 +886,65 @@
     "grade": "HIGH",
     "surface": "grass",
     "result": null
+  },
+  {
+    "key": "Sonmez Z.|Klugman H.|2026-06-14",
+    "date": "2026-06-14",
+    "p1": "Sonmez Z.",
+    "p2": "Klugman H.",
+    "winner_pred": "Sonmez Z.",
+    "prob": 0.7874,
+    "conf": 80,
+    "grade": "HIGH",
+    "surface": "grass",
+    "result": null
+  },
+  {
+    "key": "Montgomery R.|Krejcikova B.|2026-06-14",
+    "date": "2026-06-14",
+    "p1": "Montgomery R.",
+    "p2": "Krejcikova B.",
+    "winner_pred": "Krejcikova B.",
+    "prob": 0.7278,
+    "conf": 77,
+    "grade": "HIGH",
+    "surface": "grass",
+    "result": null
+  },
+  {
+    "key": "Masarova R.|Pohankova M.|2026-06-14",
+    "date": "2026-06-14",
+    "p1": "Masarova R.",
+    "p2": "Pohankova M.",
+    "winner_pred": "Masarova R.",
+    "prob": 0.68,
+    "conf": 71,
+    "grade": "HIGH",
+    "surface": "hard",
+    "result": null
+  },
+  {
+    "key": "Krueger A.|Naef C.|2026-06-14",
+    "date": "2026-06-14",
+    "p1": "Krueger A.",
+    "p2": "Naef C.",
+    "winner_pred": "Krueger A.",
+    "prob": 0.6365,
+    "conf": 66,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
+  },
+  {
+    "key": "Kudermetova P.|Kraus S.|2026-06-14",
+    "date": "2026-06-14",
+    "p1": "Kudermetova P.",
+    "p2": "Kraus S.",
+    "winner_pred": "Kraus S.",
+    "prob": 0.6302,
+    "conf": 65,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
   }
 ]
