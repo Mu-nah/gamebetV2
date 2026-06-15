@@ -970,5 +970,17 @@
     "grade": "MEDIUM",
     "surface": "hard",
     "result": null
+  },
+  {
+    "key": "Lamens S.|Badosa P.|2026-06-16",
+    "date": "2026-06-16",
+    "p1": "Lamens S.",
+    "p2": "Badosa P.",
+    "winner_pred": "Badosa P.",
+    "prob": 0.6304,
+    "conf": 65,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
   }
 ]
