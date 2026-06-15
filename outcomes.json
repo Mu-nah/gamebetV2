@@ -946,5 +946,17 @@
     "grade": "MEDIUM",
     "surface": "hard",
     "result": null
+  },
+  {
+    "key": "Masarova R.|Pohankova M.|2026-06-15",
+    "date": "2026-06-15",
+    "p1": "Masarova R.",
+    "p2": "Pohankova M.",
+    "winner_pred": "Masarova R.",
+    "prob": 0.68,
+    "conf": 71,
+    "grade": "HIGH",
+    "surface": "hard",
+    "result": null
   }
 ]
