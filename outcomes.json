@@ -958,5 +958,17 @@
     "grade": "HIGH",
     "surface": "hard",
     "result": null
+  },
+  {
+    "key": "Lamens S.|Galfi D.|2026-06-15",
+    "date": "2026-06-15",
+    "p1": "Lamens S.",
+    "p2": "Galfi D.",
+    "winner_pred": "Galfi D.",
+    "prob": 0.6255,
+    "conf": 65,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
   }
 ]
