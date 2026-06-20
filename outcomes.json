@@ -994,5 +994,41 @@
     "grade": "HIGH",
     "surface": "grass",
     "result": null
+  },
+  {
+    "key": "Zarazua R.|Thamm M.|2026-06-20",
+    "date": "2026-06-20",
+    "p1": "Zarazua R.",
+    "p2": "Thamm M.",
+    "winner_pred": "Zarazua R.",
+    "prob": 0.7954,
+    "conf": 80,
+    "grade": "HIGH",
+    "surface": "grass",
+    "result": null
+  },
+  {
+    "key": "Xu M.|Jacquemot E.|2026-06-20",
+    "date": "2026-06-20",
+    "p1": "Xu M.",
+    "p2": "Jacquemot E.",
+    "winner_pred": "Jacquemot E.",
+    "prob": 0.8003,
+    "conf": 80,
+    "grade": "HIGH",
+    "surface": "grass",
+    "result": null
+  },
+  {
+    "key": "Zhang S.|Ruse E.|2026-06-20",
+    "date": "2026-06-20",
+    "p1": "Zhang S.",
+    "p2": "Ruse E.",
+    "winner_pred": "Zhang S.",
+    "prob": 0.6349,
+    "conf": 66,
+    "grade": "MEDIUM",
+    "surface": "grass",
+    "result": null
   }
 ]
