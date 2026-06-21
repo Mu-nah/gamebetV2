@@ -1030,5 +1030,17 @@
     "grade": "MEDIUM",
     "surface": "grass",
     "result": null
+  },
+  {
+    "key": "Johnson S.|Arango E.|2026-06-21",
+    "date": "2026-06-21",
+    "p1": "Johnson S.",
+    "p2": "Arango E.",
+    "winner_pred": "Arango E.",
+    "prob": 0.6889,
+    "conf": 72,
+    "grade": "HIGH",
+    "surface": "grass",
+    "result": null
   }
 ]
