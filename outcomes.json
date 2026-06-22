@@ -1042,5 +1042,17 @@
     "grade": "HIGH",
     "surface": "grass",
     "result": null
+  },
+  {
+    "key": "Sierra S.|Zheng Q.|2026-06-22",
+    "date": "2026-06-22",
+    "p1": "Sierra S.",
+    "p2": "Zheng Q.",
+    "winner_pred": "Sierra S.",
+    "prob": 0.6517,
+    "conf": 68,
+    "grade": "MEDIUM",
+    "surface": "grass",
+    "result": null
   }
 ]
