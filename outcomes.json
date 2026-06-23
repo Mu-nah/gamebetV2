@@ -1114,5 +1114,17 @@
     "grade": "HIGH",
     "surface": "grass",
     "result": null
+  },
+  {
+    "key": "Mikulskyte J.|Zhao C.|2026-06-23",
+    "date": "2026-06-23",
+    "p1": "Mikulskyte J.",
+    "p2": "Zhao C.",
+    "winner_pred": "Mikulskyte J.",
+    "prob": 0.6255,
+    "conf": 65,
+    "grade": "MEDIUM",
+    "surface": "grass",
+    "result": null
   }
 ]
