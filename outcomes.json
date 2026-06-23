@@ -1162,5 +1162,17 @@
     "grade": "MEDIUM",
     "surface": "grass",
     "result": null
+  },
+  {
+    "key": "McDonald E.|Kalieva E.|2026-06-23",
+    "date": "2026-06-23",
+    "p1": "McDonald E.",
+    "p2": "Kalieva E.",
+    "winner_pred": "Kalieva E.",
+    "prob": 0.6928,
+    "conf": 73,
+    "grade": "HIGH",
+    "surface": "grass",
+    "result": null
   }
 ]
