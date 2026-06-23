@@ -1126,5 +1126,41 @@
     "grade": "MEDIUM",
     "surface": "grass",
     "result": null
+  },
+  {
+    "key": "Watson H.|Sherif M.|2026-06-23",
+    "date": "2026-06-23",
+    "p1": "Watson H.",
+    "p2": "Sherif M.",
+    "winner_pred": "Sherif M.",
+    "prob": 0.7129,
+    "conf": 75,
+    "grade": "HIGH",
+    "surface": "grass",
+    "result": null
+  },
+  {
+    "key": "Grabher J.|Bolkvadze M.|2026-06-23",
+    "date": "2026-06-23",
+    "p1": "Grabher J.",
+    "p2": "Bolkvadze M.",
+    "winner_pred": "Grabher J.",
+    "prob": 0.6939,
+    "conf": 73,
+    "grade": "HIGH",
+    "surface": "grass",
+    "result": null
+  },
+  {
+    "key": "Mandlik E.|Charaeva A.|2026-06-23",
+    "date": "2026-06-23",
+    "p1": "Mandlik E.",
+    "p2": "Charaeva A.",
+    "winner_pred": "Charaeva A.",
+    "prob": 0.6449,
+    "conf": 67,
+    "grade": "MEDIUM",
+    "surface": "grass",
+    "result": null
   }
 ]
