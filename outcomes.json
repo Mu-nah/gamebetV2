@@ -1090,5 +1090,17 @@
     "grade": "MEDIUM",
     "surface": "grass",
     "result": null
+  },
+  {
+    "key": "Lys E.|Navarro E.|2026-06-23",
+    "date": "2026-06-23",
+    "p1": "Lys E.",
+    "p2": "Navarro E.",
+    "winner_pred": "Navarro E.",
+    "prob": 0.6426,
+    "conf": 67,
+    "grade": "MEDIUM",
+    "surface": "grass",
+    "result": null
   }
 ]
