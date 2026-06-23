@@ -1102,5 +1102,17 @@
     "grade": "MEDIUM",
     "surface": "grass",
     "result": null
+  },
+  {
+    "key": "Riera J.|Britton D.|2026-06-23",
+    "date": "2026-06-23",
+    "p1": "Riera J.",
+    "p2": "Britton D.",
+    "winner_pred": "Riera J.",
+    "prob": 0.7343,
+    "conf": 78,
+    "grade": "HIGH",
+    "surface": "grass",
+    "result": null
   }
 ]
