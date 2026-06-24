@@ -1210,5 +1210,41 @@
     "grade": "MEDIUM",
     "surface": "grass",
     "result": null
+  },
+  {
+    "key": "Kudermetova P.|Ngounoue C.|2026-06-24",
+    "date": "2026-06-24",
+    "p1": "Kudermetova P.",
+    "p2": "Ngounoue C.",
+    "winner_pred": "Kudermetova P.",
+    "prob": 0.7103,
+    "conf": 75,
+    "grade": "HIGH",
+    "surface": "grass",
+    "result": null
+  },
+  {
+    "key": "Prozorova T.|Watson H.|2026-06-24",
+    "date": "2026-06-24",
+    "p1": "Prozorova T.",
+    "p2": "Watson H.",
+    "winner_pred": "Prozorova T.",
+    "prob": 0.6719,
+    "conf": 70,
+    "grade": "HIGH",
+    "surface": "grass",
+    "result": null
+  },
+  {
+    "key": "Iatcenko P.|Bai Z.|2026-06-24",
+    "date": "2026-06-24",
+    "p1": "Iatcenko P.",
+    "p2": "Bai Z.",
+    "winner_pred": "Iatcenko P.",
+    "prob": 0.6642,
+    "conf": 69,
+    "grade": "MEDIUM",
+    "surface": "grass",
+    "result": null
   }
 ]
