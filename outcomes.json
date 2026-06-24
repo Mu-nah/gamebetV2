@@ -1246,5 +1246,17 @@
     "grade": "MEDIUM",
     "surface": "grass",
     "result": null
+  },
+  {
+    "key": "Bolkvadze M.|Kinoshita H.|2026-06-24",
+    "date": "2026-06-24",
+    "p1": "Bolkvadze M.",
+    "p2": "Kinoshita H.",
+    "winner_pred": "Kinoshita H.",
+    "prob": 0.6332,
+    "conf": 65,
+    "grade": "MEDIUM",
+    "surface": "grass",
+    "result": null
   }
 ]
