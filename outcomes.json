@@ -1174,5 +1174,41 @@
     "grade": "HIGH",
     "surface": "grass",
     "result": null
+  },
+  {
+    "key": "Sun L.|Dodin O.|2026-06-24",
+    "date": "2026-06-24",
+    "p1": "Sun L.",
+    "p2": "Dodin O.",
+    "winner_pred": "Sun L.",
+    "prob": 0.7782,
+    "conf": 80,
+    "grade": "HIGH",
+    "surface": "grass",
+    "result": null
+  },
+  {
+    "key": "Pridankina E.|Lamens S.|2026-06-24",
+    "date": "2026-06-24",
+    "p1": "Pridankina E.",
+    "p2": "Lamens S.",
+    "winner_pred": "Lamens S.",
+    "prob": 0.6485,
+    "conf": 67,
+    "grade": "MEDIUM",
+    "surface": "grass",
+    "result": null
+  },
+  {
+    "key": "Andreeva E.|Day K.|2026-06-24",
+    "date": "2026-06-24",
+    "p1": "Andreeva E.",
+    "p2": "Day K.",
+    "winner_pred": "Day K.",
+    "prob": 0.6369,
+    "conf": 66,
+    "grade": "MEDIUM",
+    "surface": "grass",
+    "result": null
   }
 ]
