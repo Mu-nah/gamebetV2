@@ -1258,5 +1258,65 @@
     "grade": "MEDIUM",
     "surface": "grass",
     "result": null
+  },
+  {
+    "key": "Dodin O.|Sawangkaew M.|2026-06-25",
+    "date": "2026-06-25",
+    "p1": "Dodin O.",
+    "p2": "Sawangkaew M.",
+    "winner_pred": "Sawangkaew M.",
+    "prob": 0.7562,
+    "conf": 80,
+    "grade": "HIGH",
+    "surface": "grass",
+    "result": null
+  },
+  {
+    "key": "Bolkvadze M.|Vandromme J.|2026-06-25",
+    "date": "2026-06-25",
+    "p1": "Bolkvadze M.",
+    "p2": "Vandromme J.",
+    "winner_pred": "Vandromme J.",
+    "prob": 0.6668,
+    "conf": 70,
+    "grade": "HIGH",
+    "surface": "grass",
+    "result": null
+  },
+  {
+    "key": "Kostovic T.|Zhu L.|2026-06-25",
+    "date": "2026-06-25",
+    "p1": "Kostovic T.",
+    "p2": "Zhu L.",
+    "winner_pred": "Zhu L.",
+    "prob": 0.6523,
+    "conf": 68,
+    "grade": "MEDIUM",
+    "surface": "grass",
+    "result": null
+  },
+  {
+    "key": "Sasnovich A.|Andreescu B.|2026-06-25",
+    "date": "2026-06-25",
+    "p1": "Sasnovich A.",
+    "p2": "Andreescu B.",
+    "winner_pred": "Sasnovich A.",
+    "prob": 0.6377,
+    "conf": 66,
+    "grade": "MEDIUM",
+    "surface": "grass",
+    "result": null
+  },
+  {
+    "key": "Wang X.|Svitolina E.|2026-06-25",
+    "date": "2026-06-25",
+    "p1": "Wang X.",
+    "p2": "Svitolina E.",
+    "winner_pred": "Svitolina E.",
+    "prob": 0.6315,
+    "conf": 65,
+    "grade": "MEDIUM",
+    "surface": "grass",
+    "result": null
   }
 ]
