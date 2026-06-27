@@ -1,16 +1,4 @@
 {
-  "2026-06-23": [
-    "maristany zuleta de reales g._vs_ortenzi j.",
-    "grant t._vs_preston t.",
-    "dodin o._vs_pigossi l.",
-    "lys e._vs_navarro e.",
-    "britton d._vs_riera j.",
-    "mikulskyte j._vs_zhao c.",
-    "sherif m._vs_watson h.",
-    "bolkvadze m._vs_grabher j.",
-    "charaeva a._vs_mandlik e.",
-    "kalieva e._vs_mcdonald e."
-  ],
   "2026-06-24": [
     "dodin o._vs_sun l.",
     "lamens s._vs_pridankina e.",
@@ -28,6 +16,9 @@
     "svitolina e._vs_wang x."
   ],
   "2026-06-26": [
+    "__status__"
+  ],
+  "2026-06-27": [
     "__status__"
   ]
 }
