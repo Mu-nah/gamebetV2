@@ -1318,5 +1318,17 @@
     "grade": "MEDIUM",
     "surface": "grass",
     "result": null
+  },
+  {
+    "key": "Gasanova A.|Arango E.|2026-06-29",
+    "date": "2026-06-29",
+    "p1": "Gasanova A.",
+    "p2": "Arango E.",
+    "winner_pred": "Arango E.",
+    "prob": 0.6647,
+    "conf": 69,
+    "grade": "MEDIUM",
+    "surface": "grass",
+    "result": null
   }
 ]
