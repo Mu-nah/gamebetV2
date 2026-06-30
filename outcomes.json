@@ -1330,5 +1330,17 @@
     "grade": "MEDIUM",
     "surface": "grass",
     "result": null
+  },
+  {
+    "key": "Williams S.|Joint M.|2026-06-30",
+    "date": "2026-06-30",
+    "p1": "Williams S.",
+    "p2": "Joint M.",
+    "winner_pred": "Joint M.",
+    "prob": 0.794,
+    "conf": 80,
+    "grade": "HIGH",
+    "surface": "grass",
+    "result": null
   }
 ]
