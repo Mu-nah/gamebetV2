@@ -1342,5 +1342,17 @@
     "grade": "HIGH",
     "surface": "grass",
     "result": null
+  },
+  {
+    "key": "Smith A.|Sydney J.|2026-07-05",
+    "date": "2026-07-05",
+    "p1": "Smith A.",
+    "p2": "Sydney J.",
+    "winner_pred": "Smith A.",
+    "prob": 0.6681,
+    "conf": 70,
+    "grade": "HIGH",
+    "surface": "hard",
+    "result": null
   }
 ]
