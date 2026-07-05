@@ -1012,5 +1012,41 @@
   },
   "podoroska": {
     "grass": 1751.29
+  },
+  "boulard": {
+    "hard": 1731.88
+  },
+  "gimbrere": {
+    "hard": 1780.14
+  },
+  "herrero-linana": {
+    "hard": 1762.11
+  },
+  "vaissaud-9a2c0": {
+    "hard": 1783.54
+  },
+  "bartashevich": {
+    "hard": 1809.44
+  },
+  "morderger-59543": {
+    "hard": 1620.56
+  },
+  "nguyen-tan": {
+    "hard": 1813.63
+  },
+  "morderger": {
+    "hard": 1609.43
+  },
+  "dittmann-c51ee": {
+    "hard": 1780.82
+  },
+  "lew-yan-foon": {
+    "hard": 1705.3
+  },
+  "bayerlova": {
+    "hard": 1790.73
+  },
+  "martynov-22216": {
+    "hard": 1800.98
   }
 }
