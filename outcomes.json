@@ -1462,5 +1462,17 @@
     "grade": "MEDIUM",
     "surface": "hard",
     "result": null
+  },
+  {
+    "key": "Marcinko P.|Burel C.|2026-07-07",
+    "date": "2026-07-07",
+    "p1": "Marcinko P.",
+    "p2": "Burel C.",
+    "winner_pred": "Marcinko P.",
+    "prob": 0.736,
+    "conf": 78,
+    "grade": "HIGH",
+    "surface": "hard",
+    "result": null
   }
 ]
