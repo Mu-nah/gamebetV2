@@ -1414,5 +1414,53 @@
     "grade": "MEDIUM",
     "surface": "hard",
     "result": null
+  },
+  {
+    "key": "Ma L.|Ngounoue C.|2026-07-07",
+    "date": "2026-07-07",
+    "p1": "Ma L.",
+    "p2": "Ngounoue C.",
+    "winner_pred": "Ngounoue C.",
+    "prob": 0.731,
+    "conf": 77,
+    "grade": "HIGH",
+    "surface": "hard",
+    "result": null
+  },
+  {
+    "key": "Zantedeschi A.|Jacquemot E.|2026-07-07",
+    "date": "2026-07-07",
+    "p1": "Zantedeschi A.",
+    "p2": "Jacquemot E.",
+    "winner_pred": "Jacquemot E.",
+    "prob": 0.7131,
+    "conf": 75,
+    "grade": "HIGH",
+    "surface": "hard",
+    "result": null
+  },
+  {
+    "key": "Ishii S.|Cross K.|2026-07-07",
+    "date": "2026-07-07",
+    "p1": "Ishii S.",
+    "p2": "Cross K.",
+    "winner_pred": "Cross K.",
+    "prob": 0.6635,
+    "conf": 69,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
+  },
+  {
+    "key": "Zaar L.|Lepchenko V.|2026-07-07",
+    "date": "2026-07-07",
+    "p1": "Zaar L.",
+    "p2": "Lepchenko V.",
+    "winner_pred": "Lepchenko V.",
+    "prob": 0.6639,
+    "conf": 69,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
   }
 ]
