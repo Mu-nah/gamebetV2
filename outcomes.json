@@ -1474,5 +1474,41 @@
     "grade": "HIGH",
     "surface": "hard",
     "result": null
+  },
+  {
+    "key": "Ma L.|Ngounoue C.|2026-07-08",
+    "date": "2026-07-08",
+    "p1": "Ma L.",
+    "p2": "Ngounoue C.",
+    "winner_pred": "Ngounoue C.",
+    "prob": 0.731,
+    "conf": 77,
+    "grade": "HIGH",
+    "surface": "hard",
+    "result": null
+  },
+  {
+    "key": "Ishii S.|Cross K.|2026-07-08",
+    "date": "2026-07-08",
+    "p1": "Ishii S.",
+    "p2": "Cross K.",
+    "winner_pred": "Cross K.",
+    "prob": 0.6635,
+    "conf": 69,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
+  },
+  {
+    "key": "Shymanovich I.|Kinoshita H.|2026-07-08",
+    "date": "2026-07-08",
+    "p1": "Shymanovich I.",
+    "p2": "Kinoshita H.",
+    "winner_pred": "Kinoshita H.",
+    "prob": 0.6269,
+    "conf": 65,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
   }
 ]
