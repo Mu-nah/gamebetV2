@@ -1510,5 +1510,41 @@
     "grade": "MEDIUM",
     "surface": "hard",
     "result": null
+  },
+  {
+    "key": "Burel C.|Herrero Linana A.|2026-07-09",
+    "date": "2026-07-09",
+    "p1": "Burel C.",
+    "p2": "Herrero Linana A.",
+    "winner_pred": "Herrero Linana A.",
+    "prob": 0.6864,
+    "conf": 72,
+    "grade": "HIGH",
+    "surface": "hard",
+    "result": null
+  },
+  {
+    "key": "Brantmeier R.|Mandlik E.|2026-07-09",
+    "date": "2026-07-09",
+    "p1": "Brantmeier R.",
+    "p2": "Mandlik E.",
+    "winner_pred": "Mandlik E.",
+    "prob": 0.663,
+    "conf": 69,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
+  },
+  {
+    "key": "Waltert S.|Romero Gormaz L.|2026-07-09",
+    "date": "2026-07-09",
+    "p1": "Waltert S.",
+    "p2": "Romero Gormaz L.",
+    "winner_pred": "Waltert S.",
+    "prob": 0.6362,
+    "conf": 66,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
   }
 ]
