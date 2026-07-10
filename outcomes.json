@@ -1546,5 +1546,29 @@
     "grade": "MEDIUM",
     "surface": "hard",
     "result": null
+  },
+  {
+    "key": "Blinkova A.|Zantedeschi A.|2026-07-10",
+    "date": "2026-07-10",
+    "p1": "Blinkova A.",
+    "p2": "Zantedeschi A.",
+    "winner_pred": "Blinkova A.",
+    "prob": 0.7371,
+    "conf": 78,
+    "grade": "HIGH",
+    "surface": "hard",
+    "result": null
+  },
+  {
+    "key": "Jeanjean L.|Tubello A.|2026-07-10",
+    "date": "2026-07-10",
+    "p1": "Jeanjean L.",
+    "p2": "Tubello A.",
+    "winner_pred": "Jeanjean L.",
+    "prob": 0.6427,
+    "conf": 67,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
   }
 ]
