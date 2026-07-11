@@ -1630,5 +1630,17 @@
     "grade": "MEDIUM",
     "surface": "hard",
     "result": null
+  },
+  {
+    "key": "Micic E.|Ninomiya M.|2026-07-11",
+    "date": "2026-07-11",
+    "p1": "Micic E.",
+    "p2": "Ninomiya M.",
+    "winner_pred": "Micic E.",
+    "prob": 0.762,
+    "conf": 80,
+    "grade": "HIGH",
+    "surface": "hard",
+    "result": null
   }
 ]
