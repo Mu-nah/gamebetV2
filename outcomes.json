@@ -1642,5 +1642,17 @@
     "grade": "HIGH",
     "surface": "hard",
     "result": null
+  },
+  {
+    "key": "Lepchenko V.|Burcescu M.|2026-07-12",
+    "date": "2026-07-12",
+    "p1": "Lepchenko V.",
+    "p2": "Burcescu M.",
+    "winner_pred": "Lepchenko V.",
+    "prob": 0.7746,
+    "conf": 80,
+    "grade": "HIGH",
+    "surface": "hard",
+    "result": null
   }
 ]
