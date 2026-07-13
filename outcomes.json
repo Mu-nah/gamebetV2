@@ -1702,5 +1702,17 @@
     "grade": "MEDIUM",
     "surface": "hard",
     "result": null
+  },
+  {
+    "key": "Burel C.|Lepchenko V.|2026-07-13",
+    "date": "2026-07-13",
+    "p1": "Burel C.",
+    "p2": "Lepchenko V.",
+    "winner_pred": "Lepchenko V.",
+    "prob": 0.7398,
+    "conf": 78,
+    "grade": "HIGH",
+    "surface": "hard",
+    "result": null
   }
 ]
