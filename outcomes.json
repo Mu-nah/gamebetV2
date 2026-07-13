@@ -1654,5 +1654,41 @@
     "grade": "HIGH",
     "surface": "hard",
     "result": null
+  },
+  {
+    "key": "Burel C.|Putintseva Y.|2026-07-13",
+    "date": "2026-07-13",
+    "p1": "Burel C.",
+    "p2": "Putintseva Y.",
+    "winner_pred": "Putintseva Y.",
+    "prob": 0.7994,
+    "conf": 80,
+    "grade": "HIGH",
+    "surface": "hard",
+    "result": null
+  },
+  {
+    "key": "Bondar A.|Sorribes Tormo S.|2026-07-13",
+    "date": "2026-07-13",
+    "p1": "Bondar A.",
+    "p2": "Sorribes Tormo S.",
+    "winner_pred": "Bondar A.",
+    "prob": 0.6987,
+    "conf": 73,
+    "grade": "HIGH",
+    "surface": "hard",
+    "result": null
+  },
+  {
+    "key": "Tikhonova A.|Bennemann E.|2026-07-13",
+    "date": "2026-07-13",
+    "p1": "Tikhonova A.",
+    "p2": "Bennemann E.",
+    "winner_pred": "Tikhonova A.",
+    "prob": 0.6336,
+    "conf": 66,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
   }
 ]
