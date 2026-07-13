@@ -1690,5 +1690,17 @@
     "grade": "MEDIUM",
     "surface": "hard",
     "result": null
+  },
+  {
+    "key": "Lepchenko V.|Ibragimova A.|2026-07-13",
+    "date": "2026-07-13",
+    "p1": "Lepchenko V.",
+    "p2": "Ibragimova A.",
+    "winner_pred": "Lepchenko V.",
+    "prob": 0.632,
+    "conf": 65,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
   }
 ]
