@@ -1714,5 +1714,65 @@
     "grade": "HIGH",
     "surface": "hard",
     "result": null
+  },
+  {
+    "key": "Avanesyan E.|Uchijima M.|2026-07-14",
+    "date": "2026-07-14",
+    "p1": "Avanesyan E.",
+    "p2": "Uchijima M.",
+    "winner_pred": "Uchijima M.",
+    "prob": 0.6729,
+    "conf": 70,
+    "grade": "HIGH",
+    "surface": "hard",
+    "result": null
+  },
+  {
+    "key": "Sakellaridi S.|Tona M.|2026-07-14",
+    "date": "2026-07-14",
+    "p1": "Sakellaridi S.",
+    "p2": "Tona M.",
+    "winner_pred": "Tona M.",
+    "prob": 0.6429,
+    "conf": 67,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
+  },
+  {
+    "key": "Arango E.|Zidansek T.|2026-07-14",
+    "date": "2026-07-14",
+    "p1": "Arango E.",
+    "p2": "Zidansek T.",
+    "winner_pred": "Arango E.",
+    "prob": 0.6356,
+    "conf": 66,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
+  },
+  {
+    "key": "Putintseva Y.|Liu C.|2026-07-14",
+    "date": "2026-07-14",
+    "p1": "Putintseva Y.",
+    "p2": "Liu C.",
+    "winner_pred": "Putintseva Y.",
+    "prob": 0.6334,
+    "conf": 66,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
+  },
+  {
+    "key": "Timofeeva M.|Li A.|2026-07-14",
+    "date": "2026-07-14",
+    "p1": "Timofeeva M.",
+    "p2": "Li A.",
+    "winner_pred": "Li A.",
+    "prob": 0.6336,
+    "conf": 66,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
   }
 ]
