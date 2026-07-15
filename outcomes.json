@@ -1774,5 +1774,29 @@
     "grade": "MEDIUM",
     "surface": "hard",
     "result": null
+  },
+  {
+    "key": "Burel C.|Jacquemot E.|2026-07-15",
+    "date": "2026-07-15",
+    "p1": "Burel C.",
+    "p2": "Jacquemot E.",
+    "winner_pred": "Jacquemot E.",
+    "prob": 0.7743,
+    "conf": 80,
+    "grade": "HIGH",
+    "surface": "hard",
+    "result": null
+  },
+  {
+    "key": "Andreeva E.|Ristic M.|2026-07-15",
+    "date": "2026-07-15",
+    "p1": "Andreeva E.",
+    "p2": "Ristic M.",
+    "winner_pred": "Andreeva E.",
+    "prob": 0.6268,
+    "conf": 65,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
   }
 ]
