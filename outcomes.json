@@ -1798,5 +1798,17 @@
     "grade": "MEDIUM",
     "surface": "hard",
     "result": null
+  },
+  {
+    "key": "Korneeva A.|Li A.|2026-07-16",
+    "date": "2026-07-16",
+    "p1": "Korneeva A.",
+    "p2": "Li A.",
+    "winner_pred": "Li A.",
+    "prob": 0.6393,
+    "conf": 66,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
   }
 ]
