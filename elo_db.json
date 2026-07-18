@@ -1291,5 +1291,41 @@
   },
   "mazzola-f08fb": {
     "clay": 1844.17
+  },
+  "zoldakova": {
+    "clay": 1798.07
+  },
+  "ryser": {
+    "clay": 1821.91
+  },
+  "krejcova-03a1d": {
+    "clay": 1545.83
+  },
+  "bervid": {
+    "clay": 1678.55
+  },
+  "saigo-c334b": {
+    "clay": 1804.17
+  },
+  "giambelli": {
+    "hard": 1631.0
+  },
+  "webley-smith": {
+    "hard": 1593.18
+  },
+  "mcadoo": {
+    "hard": 1792.09
+  },
+  "bertacchi": {
+    "hard": 1790.08
+  },
+  "boehner-19250": {
+    "hard": 1778.37
+  },
+  "ciric-bagaric": {
+    "hard": 1804.78
+  },
+  "toth-8a51e": {
+    "hard": 1819.43
   }
 }

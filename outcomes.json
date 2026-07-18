@@ -1846,5 +1846,77 @@
     "grade": "MEDIUM",
     "surface": "hard",
     "result": null
+  },
+  {
+    "key": "Ren Y.|Giambelli C.|2026-07-18",
+    "date": "2026-07-18",
+    "p1": "Ren Y.",
+    "p2": "Giambelli C.",
+    "winner_pred": "Ren Y.",
+    "prob": 0.7115,
+    "conf": 75,
+    "grade": "HIGH",
+    "surface": "hard",
+    "result": null
+  },
+  {
+    "key": "Urgesi F.|Kotliar Y.|2026-07-18",
+    "date": "2026-07-18",
+    "p1": "Urgesi F.",
+    "p2": "Kotliar Y.",
+    "winner_pred": "Urgesi F.",
+    "prob": 0.6975,
+    "conf": 73,
+    "grade": "HIGH",
+    "surface": "hard",
+    "result": null
+  },
+  {
+    "key": "Morvayova V.|Aksu A.|2026-07-18",
+    "date": "2026-07-18",
+    "p1": "Morvayova V.",
+    "p2": "Aksu A.",
+    "winner_pred": "Aksu A.",
+    "prob": 0.6787,
+    "conf": 71,
+    "grade": "HIGH",
+    "surface": "clay",
+    "result": null
+  },
+  {
+    "key": "Trevisan M.|Jones F.|2026-07-18",
+    "date": "2026-07-18",
+    "p1": "Trevisan M.",
+    "p2": "Jones F.",
+    "winner_pred": "Jones F.",
+    "prob": 0.6522,
+    "conf": 68,
+    "grade": "MEDIUM",
+    "surface": "clay",
+    "result": null
+  },
+  {
+    "key": "Ito A.|Knutson G.|2026-07-18",
+    "date": "2026-07-18",
+    "p1": "Ito A.",
+    "p2": "Knutson G.",
+    "winner_pred": "Knutson G.",
+    "prob": 0.6558,
+    "conf": 68,
+    "grade": "MEDIUM",
+    "surface": "clay",
+    "result": null
+  },
+  {
+    "key": "Mcadoo R.|Shinikova I.|2026-07-18",
+    "date": "2026-07-18",
+    "p1": "Mcadoo R.",
+    "p2": "Shinikova I.",
+    "winner_pred": "Shinikova I.",
+    "prob": 0.6524,
+    "conf": 68,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
   }
 ]
