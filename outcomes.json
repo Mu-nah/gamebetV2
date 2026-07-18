@@ -1918,5 +1918,17 @@
     "grade": "MEDIUM",
     "surface": "hard",
     "result": null
+  },
+  {
+    "key": "Costoulas S.|Hibino N.|2026-07-18",
+    "date": "2026-07-18",
+    "p1": "Costoulas S.",
+    "p2": "Hibino N.",
+    "winner_pred": "Costoulas S.",
+    "prob": 0.6267,
+    "conf": 65,
+    "grade": "MEDIUM",
+    "surface": "clay",
+    "result": null
   }
 ]
