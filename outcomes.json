@@ -1930,5 +1930,17 @@
     "grade": "MEDIUM",
     "surface": "clay",
     "result": null
+  },
+  {
+    "key": "Hon P.|Thandi K.|2026-07-18",
+    "date": "2026-07-18",
+    "p1": "Hon P.",
+    "p2": "Thandi K.",
+    "winner_pred": "Hon P.",
+    "prob": 0.7024,
+    "conf": 74,
+    "grade": "HIGH",
+    "surface": "clay",
+    "result": null
   }
 ]
