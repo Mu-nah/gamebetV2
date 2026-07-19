@@ -1942,5 +1942,29 @@
     "grade": "HIGH",
     "surface": "clay",
     "result": null
+  },
+  {
+    "key": "Avdeeva J.|Niemeier J.|2026-07-19",
+    "date": "2026-07-19",
+    "p1": "Avdeeva J.",
+    "p2": "Niemeier J.",
+    "winner_pred": "Avdeeva J.",
+    "prob": 0.6625,
+    "conf": 69,
+    "grade": "MEDIUM",
+    "surface": "clay",
+    "result": null
+  },
+  {
+    "key": "Ryser V.|Hontama M.|2026-07-19",
+    "date": "2026-07-19",
+    "p1": "Ryser V.",
+    "p2": "Hontama M.",
+    "winner_pred": "Hontama M.",
+    "prob": 0.6639,
+    "conf": 69,
+    "grade": "MEDIUM",
+    "surface": "clay",
+    "result": null
   }
 ]
