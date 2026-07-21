@@ -1966,5 +1966,17 @@
     "grade": "MEDIUM",
     "surface": "clay",
     "result": null
+  },
+  {
+    "key": "Rame A.|Tikhonova A.|2026-07-21",
+    "date": "2026-07-21",
+    "p1": "Rame A.",
+    "p2": "Tikhonova A.",
+    "winner_pred": "Tikhonova A.",
+    "prob": 0.6371,
+    "conf": 66,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
   }
 ]
