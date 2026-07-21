@@ -1978,5 +1978,17 @@
     "grade": "MEDIUM",
     "surface": "hard",
     "result": null
+  },
+  {
+    "key": "Steiner V.|Noha Akugue N.|2026-07-21",
+    "date": "2026-07-21",
+    "p1": "Steiner V.",
+    "p2": "Noha Akugue N.",
+    "winner_pred": "Steiner V.",
+    "prob": 0.6881,
+    "conf": 72,
+    "grade": "HIGH",
+    "surface": "clay",
+    "result": null
   }
 ]
