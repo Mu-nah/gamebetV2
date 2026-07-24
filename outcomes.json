@@ -2014,5 +2014,17 @@
     "grade": "MEDIUM",
     "surface": "clay",
     "result": null
+  },
+  {
+    "key": "Ibragimova A.|Burel C.|2026-07-24",
+    "date": "2026-07-24",
+    "p1": "Ibragimova A.",
+    "p2": "Burel C.",
+    "winner_pred": "Ibragimova A.",
+    "prob": 0.6333,
+    "conf": 65,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
   }
 ]
