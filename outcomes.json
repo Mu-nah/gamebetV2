@@ -2026,5 +2026,53 @@
     "grade": "MEDIUM",
     "surface": "hard",
     "result": null
+  },
+  {
+    "key": "Ma L.|Swan K.|2026-07-25",
+    "date": "2026-07-25",
+    "p1": "Ma L.",
+    "p2": "Swan K.",
+    "winner_pred": "Swan K.",
+    "prob": 0.8205,
+    "conf": 80,
+    "grade": "HIGH",
+    "surface": "hard",
+    "result": null
+  },
+  {
+    "key": "Rakhimova K.|Watson H.|2026-07-25",
+    "date": "2026-07-25",
+    "p1": "Rakhimova K.",
+    "p2": "Watson H.",
+    "winner_pred": "Rakhimova K.",
+    "prob": 0.6967,
+    "conf": 73,
+    "grade": "HIGH",
+    "surface": "hard",
+    "result": null
+  },
+  {
+    "key": "Kupres M.|Savinykh V.|2026-07-25",
+    "date": "2026-07-25",
+    "p1": "Kupres M.",
+    "p2": "Savinykh V.",
+    "winner_pred": "Savinykh V.",
+    "prob": 0.6793,
+    "conf": 71,
+    "grade": "HIGH",
+    "surface": "hard",
+    "result": null
+  },
+  {
+    "key": "Schoppe E.|Grubor A.|2026-07-25",
+    "date": "2026-07-25",
+    "p1": "Schoppe E.",
+    "p2": "Grubor A.",
+    "winner_pred": "Grubor A.",
+    "prob": 0.628,
+    "conf": 65,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
   }
 ]
