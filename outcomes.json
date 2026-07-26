@@ -2074,5 +2074,17 @@
     "grade": "MEDIUM",
     "surface": "hard",
     "result": null
+  },
+  {
+    "key": "Kupres M.|Savinykh V.|2026-07-26",
+    "date": "2026-07-26",
+    "p1": "Kupres M.",
+    "p2": "Savinykh V.",
+    "winner_pred": "Savinykh V.",
+    "prob": 0.6793,
+    "conf": 71,
+    "grade": "HIGH",
+    "surface": "hard",
+    "result": null
   }
 ]
