@@ -2086,5 +2086,17 @@
     "grade": "HIGH",
     "surface": "hard",
     "result": null
+  },
+  {
+    "key": "Scott K.|Schoppe E.|2026-07-26",
+    "date": "2026-07-26",
+    "p1": "Scott K.",
+    "p2": "Schoppe E.",
+    "winner_pred": "Scott K.",
+    "prob": 0.7282,
+    "conf": 77,
+    "grade": "HIGH",
+    "surface": "hard",
+    "result": null
   }
 ]
