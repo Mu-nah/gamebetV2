@@ -2110,5 +2110,29 @@
     "grade": "HIGH",
     "surface": "hard",
     "result": null
+  },
+  {
+    "key": "Minnen G.|Inglis M.|2026-07-28",
+    "date": "2026-07-28",
+    "p1": "Minnen G.",
+    "p2": "Inglis M.",
+    "winner_pred": "Inglis M.",
+    "prob": 0.6389,
+    "conf": 66,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
+  },
+  {
+    "key": "Bucsa C.|Kudermetova P.|2026-07-28",
+    "date": "2026-07-28",
+    "p1": "Bucsa C.",
+    "p2": "Kudermetova P.",
+    "winner_pred": "Bucsa C.",
+    "prob": 0.631,
+    "conf": 65,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
   }
 ]
