@@ -2146,5 +2146,17 @@
     "grade": "MEDIUM",
     "surface": "hard",
     "result": null
+  },
+  {
+    "key": "Arango E.|Boisson L.|2026-08-01",
+    "date": "2026-08-01",
+    "p1": "Arango E.",
+    "p2": "Boisson L.",
+    "winner_pred": "Arango E.",
+    "prob": 0.7071,
+    "conf": 74,
+    "grade": "HIGH",
+    "surface": "hard",
+    "result": null
   }
 ]
