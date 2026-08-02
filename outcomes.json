@@ -2158,5 +2158,29 @@
     "grade": "HIGH",
     "surface": "hard",
     "result": null
+  },
+  {
+    "key": "Boisson L.|Ruzic A.|2026-08-02",
+    "date": "2026-08-02",
+    "p1": "Boisson L.",
+    "p2": "Ruzic A.",
+    "winner_pred": "Ruzic A.",
+    "prob": 0.7281,
+    "conf": 77,
+    "grade": "HIGH",
+    "surface": "hard",
+    "result": null
+  },
+  {
+    "key": "Frech M.|Jeanjean L.|2026-08-02",
+    "date": "2026-08-02",
+    "p1": "Frech M.",
+    "p2": "Jeanjean L.",
+    "winner_pred": "Frech M.",
+    "prob": 0.6603,
+    "conf": 69,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
   }
 ]
