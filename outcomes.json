@@ -2182,5 +2182,53 @@
     "grade": "MEDIUM",
     "surface": "hard",
     "result": null
+  },
+  {
+    "key": "Boisson L.|Ruzic A.|2026-08-03",
+    "date": "2026-08-03",
+    "p1": "Boisson L.",
+    "p2": "Ruzic A.",
+    "winner_pred": "Ruzic A.",
+    "prob": 0.714,
+    "conf": 75,
+    "grade": "HIGH",
+    "surface": "hard",
+    "result": null
+  },
+  {
+    "key": "Micic E.|Podrez V.|2026-08-03",
+    "date": "2026-08-03",
+    "p1": "Micic E.",
+    "p2": "Podrez V.",
+    "winner_pred": "Podrez V.",
+    "prob": 0.6806,
+    "conf": 71,
+    "grade": "HIGH",
+    "surface": "clay",
+    "result": null
+  },
+  {
+    "key": "Frech M.|Jeanjean L.|2026-08-03",
+    "date": "2026-08-03",
+    "p1": "Frech M.",
+    "p2": "Jeanjean L.",
+    "winner_pred": "Frech M.",
+    "prob": 0.638,
+    "conf": 66,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
+  },
+  {
+    "key": "Parry D.|Day K.|2026-08-03",
+    "date": "2026-08-03",
+    "p1": "Parry D.",
+    "p2": "Day K.",
+    "winner_pred": "Parry D.",
+    "prob": 0.6304,
+    "conf": 65,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
   }
 ]
