@@ -1,7 +1,4 @@
 {
-  "2026-07-31": [
-    "__status__"
-  ],
   "2026-08-01": [
     "__status__",
     "arango e._vs_boisson l."
@@ -16,5 +13,8 @@
     "micic e._vs_podrez v.",
     "frech m._vs_jeanjean l.",
     "day k._vs_parry d."
+  ],
+  "2026-08-04": [
+    "golubic v._vs_vekic d."
   ]
 }

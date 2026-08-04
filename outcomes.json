@@ -2230,5 +2230,17 @@
     "grade": "MEDIUM",
     "surface": "hard",
     "result": null
+  },
+  {
+    "key": "Vekic D.|Golubic V.|2026-08-04",
+    "date": "2026-08-04",
+    "p1": "Vekic D.",
+    "p2": "Golubic V.",
+    "winner_pred": "Golubic V.",
+    "prob": 0.6315,
+    "conf": 65,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
   }
 ]
