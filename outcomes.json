@@ -2242,5 +2242,17 @@
     "grade": "MEDIUM",
     "surface": "hard",
     "result": null
+  },
+  {
+    "key": "Udvardy P.|Osaka N.|2026-08-05",
+    "date": "2026-08-05",
+    "p1": "Udvardy P.",
+    "p2": "Osaka N.",
+    "winner_pred": "Osaka N.",
+    "prob": 0.6509,
+    "conf": 68,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
   }
 ]
