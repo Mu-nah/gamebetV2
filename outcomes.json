@@ -2266,5 +2266,17 @@
     "grade": "MEDIUM",
     "surface": "clay",
     "result": null
+  },
+  {
+    "key": "Lee C.|Valdmannova V.|2026-08-07",
+    "date": "2026-08-07",
+    "p1": "Lee C.",
+    "p2": "Valdmannova V.",
+    "winner_pred": "Lee C.",
+    "prob": 0.6487,
+    "conf": 67,
+    "grade": "MEDIUM",
+    "surface": "clay",
+    "result": null
   }
 ]
