@@ -2254,5 +2254,17 @@
     "grade": "MEDIUM",
     "surface": "hard",
     "result": null
+  },
+  {
+    "key": "Valdmannova V.|Bandecchi S.|2026-08-06",
+    "date": "2026-08-06",
+    "p1": "Valdmannova V.",
+    "p2": "Bandecchi S.",
+    "winner_pred": "Bandecchi S.",
+    "prob": 0.6432,
+    "conf": 67,
+    "grade": "MEDIUM",
+    "surface": "clay",
+    "result": null
   }
 ]
