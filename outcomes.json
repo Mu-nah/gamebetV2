@@ -2278,5 +2278,41 @@
     "grade": "MEDIUM",
     "surface": "clay",
     "result": null
+  },
+  {
+    "key": "Podoroska N.|Seidel E.|2026-08-11",
+    "date": "2026-08-11",
+    "p1": "Podoroska N.",
+    "p2": "Seidel E.",
+    "winner_pred": "Seidel E.",
+    "prob": 0.7136,
+    "conf": 75,
+    "grade": "HIGH",
+    "surface": "hard",
+    "result": null
+  },
+  {
+    "key": "Vandewinkel H.|Urhobo A.|2026-08-11",
+    "date": "2026-08-11",
+    "p1": "Vandewinkel H.",
+    "p2": "Urhobo A.",
+    "winner_pred": "Vandewinkel H.",
+    "prob": 0.6691,
+    "conf": 70,
+    "grade": "HIGH",
+    "surface": "hard",
+    "result": null
+  },
+  {
+    "key": "Sakatsume H.|Jeanjean L.|2026-08-11",
+    "date": "2026-08-11",
+    "p1": "Sakatsume H.",
+    "p2": "Jeanjean L.",
+    "winner_pred": "Sakatsume H.",
+    "prob": 0.6268,
+    "conf": 65,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
   }
 ]
