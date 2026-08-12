@@ -2314,5 +2314,29 @@
     "grade": "MEDIUM",
     "surface": "hard",
     "result": null
+  },
+  {
+    "key": "Podoroska N.|Seidel E.|2026-08-12",
+    "date": "2026-08-12",
+    "p1": "Podoroska N.",
+    "p2": "Seidel E.",
+    "winner_pred": "Seidel E.",
+    "prob": 0.7136,
+    "conf": 75,
+    "grade": "HIGH",
+    "surface": "hard",
+    "result": null
+  },
+  {
+    "key": "Tagger L.|Montgomery R.|2026-08-12",
+    "date": "2026-08-12",
+    "p1": "Tagger L.",
+    "p2": "Montgomery R.",
+    "winner_pred": "Tagger L.",
+    "prob": 0.7059,
+    "conf": 74,
+    "grade": "HIGH",
+    "surface": "hard",
+    "result": null
   }
 ]
