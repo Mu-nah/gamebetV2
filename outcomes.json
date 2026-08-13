@@ -2374,5 +2374,17 @@
     "grade": "MEDIUM",
     "surface": "hard",
     "result": null
+  },
+  {
+    "key": "Arango E.|Podoroska N.|2026-08-13",
+    "date": "2026-08-13",
+    "p1": "Arango E.",
+    "p2": "Podoroska N.",
+    "winner_pred": "Arango E.",
+    "prob": 0.7115,
+    "conf": 75,
+    "grade": "HIGH",
+    "surface": "hard",
+    "result": null
   }
 ]
