@@ -2338,5 +2338,41 @@
     "grade": "HIGH",
     "surface": "hard",
     "result": null
+  },
+  {
+    "key": "Tagger L.|Montgomery R.|2026-08-13",
+    "date": "2026-08-13",
+    "p1": "Tagger L.",
+    "p2": "Montgomery R.",
+    "winner_pred": "Tagger L.",
+    "prob": 0.7059,
+    "conf": 74,
+    "grade": "HIGH",
+    "surface": "hard",
+    "result": null
+  },
+  {
+    "key": "Timofeeva M.|Siniakova K.|2026-08-13",
+    "date": "2026-08-13",
+    "p1": "Timofeeva M.",
+    "p2": "Siniakova K.",
+    "winner_pred": "Siniakova K.",
+    "prob": 0.6403,
+    "conf": 66,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
+  },
+  {
+    "key": "Bucsa C.|Udvardy P.|2026-08-13",
+    "date": "2026-08-13",
+    "p1": "Bucsa C.",
+    "p2": "Udvardy P.",
+    "winner_pred": "Bucsa C.",
+    "prob": 0.6273,
+    "conf": 65,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
   }
 ]
