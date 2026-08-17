@@ -2398,5 +2398,17 @@
     "grade": "HIGH",
     "surface": "hard",
     "result": null
+  },
+  {
+    "key": "Parry D.|Boisson L.|2026-08-17",
+    "date": "2026-08-17",
+    "p1": "Parry D.",
+    "p2": "Boisson L.",
+    "winner_pred": "Parry D.",
+    "prob": 0.6286,
+    "conf": 65,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
   }
 ]
