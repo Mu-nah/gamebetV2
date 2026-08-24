@@ -2410,5 +2410,29 @@
     "grade": "MEDIUM",
     "surface": "hard",
     "result": null
+  },
+  {
+    "key": "Burel C.|Ma Y.|2026-08-24",
+    "date": "2026-08-24",
+    "p1": "Burel C.",
+    "p2": "Ma Y.",
+    "winner_pred": "Ma Y.",
+    "prob": 0.7424,
+    "conf": 79,
+    "grade": "HIGH",
+    "surface": "hard",
+    "result": null
+  },
+  {
+    "key": "Montgomery R.|Cross K.|2026-08-24",
+    "date": "2026-08-24",
+    "p1": "Montgomery R.",
+    "p2": "Cross K.",
+    "winner_pred": "Cross K.",
+    "prob": 0.6278,
+    "conf": 65,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
   }
 ]
