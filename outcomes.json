@@ -2434,5 +2434,29 @@
     "grade": "MEDIUM",
     "surface": "hard",
     "result": null
+  },
+  {
+    "key": "Branstine C.|Ngounoue C.|2026-08-24",
+    "date": "2026-08-24",
+    "p1": "Branstine C.",
+    "p2": "Ngounoue C.",
+    "winner_pred": "Ngounoue C.",
+    "prob": 0.7334,
+    "conf": 78,
+    "grade": "HIGH",
+    "surface": "hard",
+    "result": null
+  },
+  {
+    "key": "Salkova D.|Urhobo A.|2026-08-24",
+    "date": "2026-08-24",
+    "p1": "Salkova D.",
+    "p2": "Urhobo A.",
+    "winner_pred": "Salkova D.",
+    "prob": 0.6382,
+    "conf": 66,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
   }
 ]
