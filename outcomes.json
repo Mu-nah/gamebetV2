@@ -2470,5 +2470,41 @@
     "grade": "MEDIUM",
     "surface": "hard",
     "result": null
+  },
+  {
+    "key": "Tubello A.|Hon P.|2026-08-25",
+    "date": "2026-08-25",
+    "p1": "Tubello A.",
+    "p2": "Hon P.",
+    "winner_pred": "Hon P.",
+    "prob": 0.6424,
+    "conf": 67,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
+  },
+  {
+    "key": "Kubka M.|Penickova A.|2026-08-25",
+    "date": "2026-08-25",
+    "p1": "Kubka M.",
+    "p2": "Penickova A.",
+    "winner_pred": "Kubka M.",
+    "prob": 0.6492,
+    "conf": 67,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
+  },
+  {
+    "key": "Preston J.|Hibino N.|2026-08-25",
+    "date": "2026-08-25",
+    "p1": "Preston J.",
+    "p2": "Hibino N.",
+    "winner_pred": "Hibino N.",
+    "prob": 0.6319,
+    "conf": 65,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
   }
 ]
