@@ -2506,5 +2506,41 @@
     "grade": "MEDIUM",
     "surface": "hard",
     "result": null
+  },
+  {
+    "key": "Fruhvirtova L.|Branstine C.|2026-08-26",
+    "date": "2026-08-26",
+    "p1": "Fruhvirtova L.",
+    "p2": "Branstine C.",
+    "winner_pred": "Fruhvirtova L.",
+    "prob": 0.6783,
+    "conf": 71,
+    "grade": "HIGH",
+    "surface": "hard",
+    "result": null
+  },
+  {
+    "key": "Montgomery R.|Vandromme J.|2026-08-26",
+    "date": "2026-08-26",
+    "p1": "Montgomery R.",
+    "p2": "Vandromme J.",
+    "winner_pred": "Vandromme J.",
+    "prob": 0.6336,
+    "conf": 66,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
+  },
+  {
+    "key": "Grant T.|Sakatsume H.|2026-08-26",
+    "date": "2026-08-26",
+    "p1": "Grant T.",
+    "p2": "Sakatsume H.",
+    "winner_pred": "Sakatsume H.",
+    "prob": 0.6377,
+    "conf": 66,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
   }
 ]
