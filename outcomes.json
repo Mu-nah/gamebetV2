@@ -2542,5 +2542,29 @@
     "grade": "MEDIUM",
     "surface": "hard",
     "result": null
+  },
+  {
+    "key": "Zidansek T.|Maristany Zuleta De Reales G.|2026-08-26",
+    "date": "2026-08-26",
+    "p1": "Zidansek T.",
+    "p2": "Maristany Zuleta De Reales G.",
+    "winner_pred": "Zidansek T.",
+    "prob": 0.6523,
+    "conf": 68,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
+  },
+  {
+    "key": "Liutova K.|Radivojevic L.|2026-08-26",
+    "date": "2026-08-26",
+    "p1": "Liutova K.",
+    "p2": "Radivojevic L.",
+    "winner_pred": "Liutova K.",
+    "prob": 0.6301,
+    "conf": 65,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
   }
 ]
