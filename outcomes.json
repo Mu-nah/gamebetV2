@@ -2566,5 +2566,29 @@
     "grade": "MEDIUM",
     "surface": "hard",
     "result": null
+  },
+  {
+    "key": "Ristic M.|Sakatsume H.|2026-08-27",
+    "date": "2026-08-27",
+    "p1": "Ristic M.",
+    "p2": "Sakatsume H.",
+    "winner_pred": "Sakatsume H.",
+    "prob": 0.6612,
+    "conf": 69,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
+  },
+  {
+    "key": "Watson H.|Dart H.|2026-08-27",
+    "date": "2026-08-27",
+    "p1": "Watson H.",
+    "p2": "Dart H.",
+    "winner_pred": "Dart H.",
+    "prob": 0.656,
+    "conf": 68,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
   }
 ]
