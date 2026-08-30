@@ -2614,5 +2614,17 @@
     "grade": "MEDIUM",
     "surface": "hard",
     "result": null
+  },
+  {
+    "key": "Ito A.|Selekhmeteva O.|2026-08-31",
+    "date": "2026-08-31",
+    "p1": "Ito A.",
+    "p2": "Selekhmeteva O.",
+    "winner_pred": "Selekhmeteva O.",
+    "prob": 0.6298,
+    "conf": 65,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "result": null
   }
 ]
