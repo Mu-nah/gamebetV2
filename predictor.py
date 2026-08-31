@@ -14,10 +14,17 @@ IMPROVEMENTS vs v7:
   J. Status dedup — "no picks" message sent once per day max
 
 RUN_MODE:
-  normal       — dedup ON,  HIGH+MEDIUM, marks sent
-  daily_reset  — dedup OFF, HIGH+MEDIUM, marks sent
-  force        — dedup OFF, HIGH+MEDIUM, does NOT mark sent
+  normal       — dedup ON,  all picks, marks sent
+  daily_reset  — dedup OFF, all picks, marks sent
+  force        — dedup OFF, all picks, does NOT mark sent
   calibrate    — reads outcomes.json, prints calibration report, exits
+
+POST-CALIBRATION RULES (from resolved-outcome analysis):
+  1. Grand Slam qualifying picks are skipped entirely — accuracy there was
+     below 50%, worse than a coin flip. Main draws are unaffected.
+  2. The HIGH / MEDIUM / LOW confidence label does NOT gate picks — HIGH and
+     MEDIUM resolved at the same accuracy, so every pick is treated equally.
+     The label is still computed and logged for calibration only.
 """
 
 from playwright.sync_api import sync_playwright
@@ -284,10 +291,12 @@ def mark_as_sent(picks: list):
 # G. RUN MODE FILTERS (fixed)
 # ══════════════════════════════════════════════════════════════
 def apply_mode_filters(picks: list) -> list:
-    qualified = [pk for pk in picks if pk.get("grade") in ("HIGH", "MEDIUM")]
+    # Confidence label no longer gates picks — HIGH and MEDIUM resolved at the
+    # same accuracy, so every pick that cleared the model/edge checks is kept.
+    qualified = list(picks)
     if RUN_MODE in ("force", "daily_reset"):
         label = "FORCE" if RUN_MODE == "force" else "DAILY_RESET"
-        print(f"[MODE] {label} — {len(qualified)} HIGH/MEDIUM picks (dedup ignored)")
+        print(f"[MODE] {label} — {len(qualified)} picks (dedup ignored)")
         return qualified
     before = len(qualified)
     result = [pk for pk in qualified
@@ -476,6 +485,25 @@ def is_allowed_tournament(name: str, check_date: bool = False) -> bool:
                 pass
             break
     return True
+
+_SLAM_KEYS = ("wimbledon", "us open", "australian open",
+              "french open", "roland garros", "roland-garros")
+
+def is_slam_qualifying(tournament: str, round_label: str = "") -> bool:
+    """
+    True when a match belongs to a Grand Slam *qualifying* event.
+    Resolved-outcome analysis showed sub-50% accuracy on these — skip them.
+    Slam main draws return False and are unaffected.
+    """
+    t = (tournament or "").lower()
+    r = (round_label or "").lower()
+    if not any(k in t for k in _SLAM_KEYS):
+        return False
+    if "qual" in t:
+        return True
+    if "qual" in r or re.search(r"\bq[-\s]?[1-3]\b", r):
+        return True
+    return False
 
 _ERROR_TITLES = ("just a moment","access denied","429","too many requests")
 
@@ -1132,6 +1160,9 @@ def evaluate_matches(matches: list, context) -> list:
     for m in matches[:30]:
         try:
             print(f"\n── {m['p1']} vs {m['p2']}  [{m['surface']}]  {m['tournament']}")
+            if is_slam_qualifying(m["tournament"], m.get("round", "")):
+                print(f"   SKIP: Grand Slam qualifying — {m['tournament']} {m.get('round','')}".rstrip())
+                continue
             d1 = get_player_data(context, m["slug1"], m["p1"], m["surface"])
             d2 = get_player_data(context, m["slug2"], m["p2"], m["surface"])
             s1   = score_player(d1, m["surface"], m["slug1"])
@@ -1362,10 +1393,10 @@ def run():
         _prefetch(context, matches)
         raw   = evaluate_matches(matches, context)
         picks = apply_mode_filters(raw)
-        picks.sort(key=lambda x: (0 if x["grade"] == "HIGH" else 1, -x["conf"]))
+        picks.sort(key=lambda x: -x["conf"])
 
         # J. Status dedup — notify once if no picks
-        all_qualified = [pk for pk in raw if pk.get("grade") in ("HIGH", "MEDIUM")]
+        all_qualified = list(raw)
         if not picks:
             today_str = datetime.now(WAT).strftime("%A %d %B %Y")
             sent_time = datetime.now(WAT).strftime("%H:%M WAT")
@@ -1406,15 +1437,8 @@ def run():
         today_str = datetime.now(WAT).strftime("%A %d %B %Y")
         lines     = [f"🎾 WTA ENGINE v8  {mode_label}\n📅 {today_str}\n"]
 
-        has_medium = any(pk["grade"] == "MEDIUM" for pk in picks)
-        has_high   = any(pk["grade"] == "HIGH"   for pk in picks)
-        prev_grade = None
-
         for pk in picks[:6]:
-            if has_high and has_medium and prev_grade == "HIGH" and pk["grade"] == "MEDIUM":
-                lines.append("── ⚡ medium confidence ──\n")
             lines.append(format_pick(pk))
-            prev_grade = pk["grade"]
 
         sent_time = datetime.now(WAT).strftime("%H:%M WAT")
         lines.append(f"⚠️ For entertainment only.\n🕐 Sent at {sent_time}")
