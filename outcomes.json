@@ -2626,5 +2626,22 @@
     "grade": "MEDIUM",
     "surface": "hard",
     "result": null
+  },
+  {
+    "key": "Birrell K.|Marcinko P.|2026-08-31",
+    "pair": "birrell k.|marcinko p.",
+    "date": "2026-08-31",
+    "p1": "Birrell K.",
+    "p2": "Marcinko P.",
+    "winner_pred": "Birrell K.",
+    "prob": 0.6377,
+    "conf": 66,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "tournament": "US Open",
+    "tier": "slam_main",
+    "rank_elo_conflict": false,
+    "conflict_sided_with": null,
+    "result": null
   }
 ]
