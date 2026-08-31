@@ -34,8 +34,16 @@ import math
 import time
 import re
 import os
+import sys
 import json
 from datetime import datetime, timedelta, timezone
+
+# Windows consoles default to cp1252 and choke on the emoji in the log lines.
+for _stream in (sys.stdout, sys.stderr):
+    try:
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
 
 BASE = "https://www.tennisexplorer.com"
 WAT  = timezone(timedelta(hours=1))
@@ -190,6 +198,7 @@ def log_picks(picks: list):
             continue
         outcomes.append({
             "key":         key,
+            "pair":        _pair_key(pk["m"]["p1"], pk["m"]["p2"]),
             "date":        today,
             "p1":          pk["m"]["p1"],
             "p2":          pk["m"]["p2"],
@@ -198,12 +207,17 @@ def log_picks(picks: list):
             "conf":        pk["conf"],
             "grade":       pk["grade"],
             "surface":     pk["m"]["surface"],
+            "tournament":  pk["m"].get("tournament", ""),
+            "tier":        tournament_tier(pk["m"].get("tournament", ""),
+                                           pk["m"].get("round", "")),
             "result":      None,
         })
     _save_outcomes(outcomes)
 
 def run_calibration():
-    outcomes = [o for o in _load_outcomes() if o.get("result") in ("correct","wrong")]
+    outcomes = _dedupe_by_pair(
+        [o for o in _load_outcomes() if o.get("result") in ("correct","wrong")]
+    )
     if not outcomes:
         print("No resolved outcomes yet.")
         return
@@ -226,6 +240,12 @@ def run_calibration():
         if not ss: continue
         acc = sum(1 for o in ss if o["result"]=="correct") / len(ss)
         print(f"  {surf:8s}: {acc*100:.1f}%  n={len(ss)}")
+    print("  ── by tier ──")
+    for tier in ("slam_qual","slam_main","wta125","wta_tour","unknown"):
+        ts = [o for o in outcomes if (o.get("tier") or "unknown") == tier]
+        if not ts: continue
+        acc = sum(1 for o in ts if o["result"]=="correct") / len(ts)
+        print(f"  {tier:10s}: {acc*100:.1f}%  n={len(ts)}")
     probs = sorted([o["prob"] for o in outcomes if o["result"]=="correct"], reverse=True)
     if len(probs) >= 10:
         print(f"\nRecommended thresholds:")
@@ -501,9 +521,32 @@ def is_slam_qualifying(tournament: str, round_label: str = "") -> bool:
         return False
     if "qual" in t:
         return True
-    if "qual" in r or re.search(r"\bq[-\s]?[1-3]\b", r):
+    r_compact = r.replace(" ", "").replace("-", "").replace(".", "")
+    if "qual" in r_compact or r_compact in ("q1", "q2", "q3", "qr",
+                                            "q1r", "q2r", "q3r"):
         return True
     return False
+
+def tournament_tier(tournament: str, round_label: str = "") -> str:
+    """Coarse tier tag stored on every logged outcome for the calibration report."""
+    t = (tournament or "").lower()
+    if is_slam_qualifying(tournament, round_label):
+        return "slam_qual"
+    if any(k in t for k in _SLAM_KEYS):
+        return "slam_main"
+    if "125" in t:
+        return "wta125"
+    return "wta_tour"
+
+def _pair_key(a: str, b: str) -> str:
+    return "|".join(sorted([(a or "").strip().lower(), (b or "").strip().lower()]))
+
+def _dedupe_by_pair(outcomes: list) -> list:
+    """Collapse the same real-world match resent under several dates to its last copy."""
+    seen: dict = {}
+    for o in outcomes:
+        seen[o.get("pair") or _pair_key(o.get("p1", ""), o.get("p2", ""))] = o
+    return list(seen.values())
 
 _ERROR_TITLES = ("just a moment","access denied","429","too many requests")
 
@@ -1260,61 +1303,76 @@ def format_pick(pk: dict) -> str:
 # ══════════════════════════════════════════════════════════════
 # AUTO-RESOLVE + ELO UPDATE + SIGMOID TUNING
 # ══════════════════════════════════════════════════════════════
-def _auto_resolve_yesterday(context):
-    print("\n[AUTO-RESOLVE] Checking yesterday's results...")
-    page = context.new_page()
-    try:
-        ok = _safe_goto(page, f"{BASE}/results/?type=wta-single&day=-1", context, retries=1)
-        if not ok:
-            print("  [AUTO-RESOLVE] Could not load results page.")
-            return
+def _parse_result_rows(rows) -> list:
+    results = []
+    current_surface = "hard"
+    i = 0
+    while i < len(rows) - 1:
+        row1 = rows[i]
         try:
-            page.wait_for_selector("table.result", timeout=10000)
+            t_name_td = row1.query_selector("td.t-name")
+            if t_name_td:
+                pl = [l for l in t_name_td.query_selector_all("a")
+                      if "/player/" in (l.get_attribute("href") or "")]
+                if not pl:
+                    s = row1.query_selector("td.s-color span[title]")
+                    if s:
+                        current_surface = _parse_surface(s.get_attribute("title") or "")
+                    i += 1
+                    continue
         except Exception:
-            return
-
-        rows    = page.query_selector_all("tr")
-        results = []
-        current_surface = "hard"
-        i = 0
-        while i < len(rows) - 1:
-            row1 = rows[i]
-            try:
-                t_name_td = row1.query_selector("td.t-name")
-                if t_name_td:
-                    pl = [l for l in t_name_td.query_selector_all("a")
-                          if "/player/" in (l.get_attribute("href") or "")]
-                    if not pl:
-                        s = row1.query_selector("td.s-color span[title]")
-                        if s:
-                            current_surface = _parse_surface(s.get_attribute("title") or "")
-                        i += 1
-                        continue
-            except Exception:
-                pass
-            try:
-                p1_el = row1.query_selector("td.t-name a[href*='/player/']")
-                if not p1_el:
-                    i += 1
-                    continue
-                row2  = rows[i + 1]
-                p2_el = row2.query_selector("td.t-name a[href*='/player/']")
-                if not p2_el:
-                    i += 1
-                    continue
-                slug1   = (p1_el.get_attribute("href") or "").strip("/").split("/")[-1]
-                slug2   = (p2_el.get_attribute("href") or "").strip("/").split("/")[-1]
-                strong1 = row1.query_selector("td.t-name strong")
-                strong2 = row2.query_selector("td.t-name strong")
-                if strong1:
-                    results.append((slug1, slug2, current_surface))
-                elif strong2:
-                    results.append((slug2, slug1, current_surface))
-                i += 2
-            except Exception:
+            pass
+        try:
+            p1_el = row1.query_selector("td.t-name a[href*='/player/']")
+            if not p1_el:
                 i += 1
+                continue
+            row2  = rows[i + 1]
+            p2_el = row2.query_selector("td.t-name a[href*='/player/']")
+            if not p2_el:
+                i += 1
+                continue
+            slug1   = (p1_el.get_attribute("href") or "").strip("/").split("/")[-1]
+            slug2   = (p2_el.get_attribute("href") or "").strip("/").split("/")[-1]
+            strong1 = row1.query_selector("td.t-name strong")
+            strong2 = row2.query_selector("td.t-name strong")
+            if strong1:
+                results.append((slug1, slug2, current_surface))
+            elif strong2:
+                results.append((slug2, slug1, current_surface))
+            i += 2
+        except Exception:
+            i += 1
+    return results
 
-        print(f"  [AUTO-RESOLVE] Found {len(results)} completed results")
+def _auto_resolve_yesterday(context):
+    print("\n[AUTO-RESOLVE] Checking recent results (last 3 days)...")
+    page    = context.new_page()
+    results = []
+    try:
+        for day in ("-1", "-2", "-3"):
+            ok = _safe_goto(page, f"{BASE}/results/?type=wta-single&day={day}",
+                            context, retries=1)
+            if not ok:
+                print(f"  [AUTO-RESOLVE] Could not load results page (day={day}).")
+                continue
+            try:
+                page.wait_for_selector("table.result", timeout=10000)
+            except Exception:
+                continue
+            day_results = _parse_result_rows(page.query_selector_all("tr"))
+            print(f"  [AUTO-RESOLVE] day={day}: {len(day_results)} completed results")
+            results.extend(day_results)
+
+        # dedupe (winner, loser) pairs seen across multiple result pages
+        seen, uniq = set(), []
+        for w, l, s in results:
+            k = _pair_key(w, l)
+            if k not in seen:
+                seen.add(k); uniq.append((w, l, s))
+        results = uniq
+        print(f"  [AUTO-RESOLVE] {len(results)} unique completed results")
+
         for winner_slug, loser_slug, surface in results:
             if winner_slug and loser_slug:
                 update_surface_elo(winner_slug, loser_slug, surface)
@@ -1329,30 +1387,38 @@ def _auto_resolve_yesterday(context):
         except Exception: pass
 
 def _resolve_outcomes(results: list):
-    outcomes  = _load_outcomes()
-    yesterday = (datetime.now(WAT) - timedelta(days=1)).strftime("%Y-%m-%d")
-    pending   = [o for o in outcomes if o.get("result") is None
-                 and o.get("date") == yesterday]
+    """
+    Fill result=correct/wrong on every still-pending pick from the last 10 days
+    (not just yesterday) so a failed daily run self-heals on the next one.
+    A pick is matched only when BOTH its players appear in the same result pair.
+    """
+    outcomes = _load_outcomes()
+    horizon  = (datetime.now(WAT) - timedelta(days=10)).strftime("%Y-%m-%d")
+    pending  = [o for o in outcomes if o.get("result") is None
+               and (o.get("date") or "") >= horizon]
     if not pending:
         return
-    result_map = {w: l for w, l, _ in results}
-    resolved   = 0
+    resolved = 0
     for o in pending:
-        winner_pred  = o.get("winner_pred", "")
-        pred_surname = winner_pred.split()[0].lower().rstrip(".") if winner_pred else ""
-        for w_slug, l_slug in result_map.items():
-            if pred_surname and pred_surname in w_slug:
-                o["result"] = "correct"; o["winner_actual"] = w_slug
-                resolved += 1; break
-            elif pred_surname and pred_surname in l_slug:
-                o["result"] = "wrong";   o["winner_actual"] = w_slug
-                resolved += 1; break
+        s_pred = (o.get("winner_pred", "").split() or [""])[0].lower().rstrip(".")
+        s_p1   = (o.get("p1", "").split() or [""])[0].lower().rstrip(".")
+        s_p2   = (o.get("p2", "").split() or [""])[0].lower().rstrip(".")
+        if not (s_pred and s_p1 and s_p2):
+            continue
+        for w_slug, l_slug, _ in results:
+            pair = f"{w_slug}|{l_slug}"
+            if s_p1 in pair and s_p2 in pair:
+                o["result"]        = "correct" if s_pred in w_slug else "wrong"
+                o["winner_actual"] = w_slug
+                resolved += 1
+                break
     _save_outcomes(outcomes)
-    print(f"  [AUTO-RESOLVE] Resolved {resolved}/{len(pending)} yesterday's picks")
+    print(f"  [AUTO-RESOLVE] Resolved {resolved}/{len(pending)} pending picks")
 
 def _autotune_sigmoid():
-    outcomes = [o for o in _load_outcomes()
-                if o.get("result") in ("correct", "wrong")]
+    outcomes = _dedupe_by_pair(
+        [o for o in _load_outcomes() if o.get("result") in ("correct", "wrong")]
+    )
     if len(outcomes) < 30:
         return
     for surf in ("clay", "hard", "grass", "indoors"):
