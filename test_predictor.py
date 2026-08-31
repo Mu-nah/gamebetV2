@@ -19,7 +19,11 @@ import predictor as p
     ("Australian Open",         "qual.",True),
     ("French Open",             "Q1",   True),
     ("US Open",                 "Q3",   True),
+    ("US Open",                 "q",    True),
+    ("US Open",                 "q-1",  True),
+    ("US Open",                 "1q",   True),
     ("US Open",                 "R32",  False),   # main draw
+    ("US Open",                 "QF",   False),   # quarter-final, not qualifying
     ("Wimbledon",               "1R",   False),
     ("WTA Cincinnati",          "Q1",   False),   # not a slam
     ("",                        "",     False),
@@ -60,6 +64,17 @@ def test_dedupe_by_pair_keeps_last_copy():
     assert len(out) == 2
     ab = [o for o in out if o["pair"] == p._pair_key("A B", "C D")][0]
     assert ab["result"] == "wrong"          # last copy wins
+
+
+@pytest.mark.parametrize("r1,r2,e1,e2,expected", [
+    (10, 100, 1500, 1800, (True, "p1", "p2")),    # disagree, both gaps large
+    (100, 10, 1800, 1500, (True, "p2", "p1")),    # mirror
+    (10, 100, 1800, 1500, (False, "p1", "p1")),   # agree
+    (10, 100, 1550, 1500, (False, "p1", "p1")),   # elo gap < 200
+    (10, 40, 1500, 1800, (False, "p1", "p2")),    # rank gap < 50
+])
+def test_rank_elo_conflict(r1, r2, e1, e2, expected):
+    assert p.rank_elo_conflict(r1, r2, e1, e2) == expected
 
 
 def test_dedupe_by_pair_falls_back_when_pair_missing():
@@ -125,6 +140,25 @@ def test_resolve_outcomes_requires_both_players_to_match(outcomes_file):
     assert json.loads(outcomes_file.read_text())[0]["result"] is None
 
 
+def test_calibration_reports_rank_vs_elo_split(outcomes_file, capsys):
+    base = {"grade": "HIGH", "surface": "hard", "tier": "wta_tour", "prob": 0.65}
+    _write_outcomes(outcomes_file, [
+        {**base, "p1": "A", "p2": "B", "pair": "a|b", "result": "wrong",
+         "rank_elo_conflict": True, "conflict_sided_with": "rank"},
+        {**base, "p1": "C", "p2": "D", "pair": "c|d", "result": "correct",
+         "rank_elo_conflict": True, "conflict_sided_with": "elo"},
+        {**base, "p1": "E", "p2": "F", "pair": "e|f", "result": "correct",
+         "rank_elo_conflict": True, "conflict_sided_with": "elo"},
+        {**base, "p1": "G", "p2": "H", "pair": "g|h", "result": "correct",
+         "rank_elo_conflict": False, "conflict_sided_with": None},
+    ])
+    p.run_calibration()
+    out = capsys.readouterr().out
+    assert "rank vs elo" in out
+    assert "sided w/ rank: 0.0%  n=1" in out
+    assert "sided w/ elo : 100.0%  n=2" in out
+
+
 def test_resolve_outcomes_no_pending_is_noop(outcomes_file):
     _write_outcomes(outcomes_file, [
         {"p1": "A B", "p2": "C D", "winner_pred": "A B",
@@ -152,6 +186,30 @@ def test_grade_thresholds(conf, g):
 def test_win_prob_symmetry():
     assert p.win_prob(0.6, 0.4) == pytest.approx(1 - p.win_prob(0.4, 0.6))
     assert p.win_prob(0.5, 0.5) == pytest.approx(0.5)
+
+
+# ──────────────────────────────────────────────────────────────
+# _key_factor — phrased from the pick's side, never contradicts it
+# ──────────────────────────────────────────────────────────────
+def test_key_factor_streak_on_faded_player_is_upset_risk():
+    df = {"serve_win_pct": 0.7, "sw": {}, "sl": {}, "rank": 60, "streak": 5}
+    dd = {"serve_win_pct": 0.7, "sw": {}, "sl": {}, "rank": 144, "streak": 2}
+    # pick Sakatsume, but the streak belongs to Kalinina (p1)
+    out = p._key_factor(df, dd, "Kalinina A.", "Sakatsume H.", "hard", fav="Sakatsume H.")
+    assert out == "Upset risk — Kalinina A. on a 5-win streak"
+
+
+def test_key_factor_streak_on_pick_is_plain():
+    df = {"serve_win_pct": 0.7, "sw": {}, "sl": {}, "rank": 60, "streak": 5}
+    dd = {"serve_win_pct": 0.7, "sw": {}, "sl": {}, "rank": 144, "streak": 2}
+    out = p._key_factor(df, dd, "Kalinina A.", "Sakatsume H.", "hard", fav="Kalinina A.")
+    assert out == "Kalinina A. on a 5-win streak"
+
+
+def test_key_factor_ranking_gap_names_the_pick():
+    df = {"sw": {}, "sl": {}, "rank": 20}
+    dd = {"sw": {}, "sl": {}, "rank": 200}
+    assert "Kenin S." in p._key_factor(df, dd, "Kenin S.", "Doe J.", "hard", fav="Kenin S.")
 
 
 # ──────────────────────────────────────────────────────────────

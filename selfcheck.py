@@ -36,8 +36,33 @@ check("Wimbledon Qualifying",        p.is_slam_qualifying("Wimbledon Qualifying"
 check("Australian Open / qual.",     p.is_slam_qualifying("Australian Open", "qual."),     True)
 check("French Open / Q1",            p.is_slam_qualifying("French Open", "Q1"),            True)
 check("US Open main draw / R32",     p.is_slam_qualifying("US Open", "R32"),               False)
+check("US Open / bare 'q'",          p.is_slam_qualifying("US Open", "q"),                 True)
+check("US Open / 'q-1'",             p.is_slam_qualifying("US Open", "q-1"),               True)
+check("US Open / 'QF' not quali",    p.is_slam_qualifying("US Open", "QF"),                False)
 check("WTA 1000 quali (not slam)",   p.is_slam_qualifying("WTA Cincinnati", "Q1"),         False)
 check("empty",                       p.is_slam_qualifying("", ""),                         False)
+
+# ── _key_factor is phrased from the pick's side ───────────────
+print("_key_factor never contradicts the pick")
+_df = {"serve_win_pct": 0.7, "sw": {}, "sl": {}, "rank": 60, "streak": 5}
+_dd = {"serve_win_pct": 0.7, "sw": {}, "sl": {}, "rank": 144, "streak": 2}
+check("streak belongs to faded player -> 'Upset risk'",
+      p._key_factor(_df, _dd, "Kalinina A.", "Sakatsume H.", "hard", fav="Sakatsume H."),
+      "Upset risk — Kalinina A. on a 5-win streak")
+check("streak belongs to pick -> plain",
+      p._key_factor(_df, _dd, "Kalinina A.", "Sakatsume H.", "hard", fav="Kalinina A."),
+      "Kalinina A. on a 5-win streak")
+
+# ── rank_elo_conflict ────────────────────────────────────────
+print("rank_elo_conflict")
+check("disagree + both gaps large -> conflict",
+      p.rank_elo_conflict(10, 100, 1500, 1800), (True, "p1", "p2"))
+check("agree -> no conflict",
+      p.rank_elo_conflict(10, 100, 1800, 1500)[0], False)
+check("elo gap too small -> no conflict",
+      p.rank_elo_conflict(10, 100, 1550, 1500)[0], False)
+check("rank gap too small -> no conflict",
+      p.rank_elo_conflict(10, 40, 1500, 1800)[0], False)
 
 # ── tournament_tier ──────────────────────────────────────────
 print("tournament_tier")

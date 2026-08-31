@@ -22,9 +22,9 @@ RUN_MODE:
 POST-CALIBRATION RULES (from resolved-outcome analysis):
   1. Grand Slam qualifying picks are skipped entirely — accuracy there was
      below 50%, worse than a coin flip. Main draws are unaffected.
-  2. The HIGH / MEDIUM / LOW confidence label does NOT gate picks — HIGH and
-     MEDIUM resolved at the same accuracy, so every pick is treated equally.
-     The label is still computed and logged for calibration only.
+  2. HIGH and MEDIUM are treated as one bucket (no sort priority, no section
+     divider) — they resolved at the same accuracy. LOW is still excluded.
+     The label is still computed and logged for calibration.
 """
 
 from playwright.sync_api import sync_playwright
@@ -207,9 +207,15 @@ def log_picks(picks: list):
             "conf":        pk["conf"],
             "grade":       pk["grade"],
             "surface":     pk["m"]["surface"],
-            "tournament":  pk["m"].get("tournament", ""),
-            "tier":        tournament_tier(pk["m"].get("tournament", ""),
-                                           pk["m"].get("round", "")),
+            "tournament":  pk["m"].get("tournament_full")
+                           or pk["m"].get("tournament", ""),
+            "tier":        tournament_tier(
+                               pk["m"].get("tournament_full")
+                               or pk["m"].get("tournament", ""),
+                               pk["m"].get("round_raw")
+                               or pk["m"].get("round", "")),
+            "rank_elo_conflict":   bool(pk.get("rank_elo_conflict")),
+            "conflict_sided_with": pk.get("conflict_sided_with"),
             "result":      None,
         })
     _save_outcomes(outcomes)
@@ -246,6 +252,16 @@ def run_calibration():
         if not ts: continue
         acc = sum(1 for o in ts if o["result"]=="correct") / len(ts)
         print(f"  {tier:10s}: {acc*100:.1f}%  n={len(ts)}")
+    conf = [o for o in outcomes if o.get("rank_elo_conflict")]
+    if conf:
+        print("  ── rank vs elo (when they disagreed) ──")
+        for signal in ("rank", "elo"):
+            cs = [o for o in conf if o.get("conflict_sided_with") == signal]
+            if not cs: continue
+            acc = sum(1 for o in cs if o["result"] == "correct") / len(cs)
+            print(f"  sided w/ {signal:4s}: {acc*100:.1f}%  n={len(cs)}")
+        print(f"  (total rank/elo-conflict picks resolved: {len(conf)})")
+
     probs = sorted([o["prob"] for o in outcomes if o["result"]=="correct"], reverse=True)
     if len(probs) >= 10:
         print(f"\nRecommended thresholds:")
@@ -311,12 +327,13 @@ def mark_as_sent(picks: list):
 # G. RUN MODE FILTERS (fixed)
 # ══════════════════════════════════════════════════════════════
 def apply_mode_filters(picks: list) -> list:
-    # Confidence label no longer gates picks — HIGH and MEDIUM resolved at the
-    # same accuracy, so every pick that cleared the model/edge checks is kept.
-    qualified = list(picks)
+    # HIGH and MEDIUM resolved at the same accuracy, so the two are treated as
+    # one bucket (no sort priority, no section divider) — but LOW is still
+    # excluded: it has never been backtested and sits barely above a coin flip.
+    qualified = [pk for pk in picks if pk.get("grade") in ("HIGH", "MEDIUM")]
     if RUN_MODE in ("force", "daily_reset"):
         label = "FORCE" if RUN_MODE == "force" else "DAILY_RESET"
-        print(f"[MODE] {label} — {len(qualified)} picks (dedup ignored)")
+        print(f"[MODE] {label} — {len(qualified)} HIGH/MEDIUM picks (dedup ignored)")
         return qualified
     before = len(qualified)
     result = [pk for pk in qualified
@@ -521,11 +538,31 @@ def is_slam_qualifying(tournament: str, round_label: str = "") -> bool:
         return False
     if "qual" in t:
         return True
-    r_compact = r.replace(" ", "").replace("-", "").replace(".", "")
-    if "qual" in r_compact or r_compact in ("q1", "q2", "q3", "qr",
-                                            "q1r", "q2r", "q3r"):
+    # round cell: "qual", "q", "q1"/"q2"/"q3", "q-1", "1q", "q1r", "qr" ...
+    rc = re.sub(r"[\s.\-_/]", "", r)
+    if "qual" in rc or re.fullmatch(r"\d?q\d?r?", rc):
         return True
     return False
+
+def rank_elo_conflict(p1_rank, p2_rank, p1_elo, p2_elo,
+                      rank_gap_threshold: int = 50,
+                      elo_gap_threshold: int = 200):
+    """
+    Detect when the ranking favourite and the surface-ELO favourite are
+    different players by a margin large enough to matter (not noise).
+
+    Returns (is_conflict, rank_favourite, elo_favourite) where the favourite
+    strings are "p1" / "p2". is_conflict is True only when the two signals
+    disagree AND both gaps clear their thresholds.
+    """
+    rank_favourite = "p1" if p1_rank <= p2_rank else "p2"   # lower = better
+    elo_favourite  = "p1" if p1_elo  >= p2_elo  else "p2"    # higher = better
+    is_conflict = (
+        rank_favourite != elo_favourite
+        and abs(p1_rank - p2_rank) >= rank_gap_threshold
+        and abs(p1_elo  - p2_elo)  >= elo_gap_threshold
+    )
+    return is_conflict, rank_favourite, elo_favourite
 
 def tournament_tier(tournament: str, round_label: str = "") -> str:
     """Coarse tier tag stored on every logged outcome for the calibration report."""
@@ -746,8 +783,9 @@ def get_matches(context, day: str = "today", label: str = "") -> list:
         rows = page.query_selector_all("tr")
         print(f"   Total tr rows: {len(rows)}")
 
-        current_tournament = "Unknown"
-        current_surface    = "hard"
+        current_tournament      = "Unknown"
+        current_tournament_full = "Unknown"   # keeps "... - Qualification" etc.
+        current_surface         = "hard"
         i = 0
 
         while i < len(rows) - 1:
@@ -760,6 +798,11 @@ def get_matches(context, day: str = "today", label: str = "") -> list:
                     if not player_links:
                         a = t_name_td.query_selector("a")
                         if a: current_tournament = a.inner_text().strip()
+                        # full cell text carries the "- Qualification" / "qual."
+                        # marker that the anchor alone drops
+                        current_tournament_full = " ".join(
+                            (t_name_td.inner_text() or "").split()
+                        ) or current_tournament
                         s = row1.query_selector("td.s-color span[title]")
                         if s:
                             current_surface = _parse_surface(s.get_attribute("title") or "")
@@ -821,14 +864,15 @@ def get_matches(context, day: str = "today", label: str = "") -> list:
                     continue
 
                 round_label = ""
+                round_raw   = ""
                 try:
                     rt = row1.query_selector("td.round, td.r")
                     if rt:
+                        round_raw = rt.inner_text().strip()
                         rm = {"F":"🏆 Final","SF":"🥈 Semi","QF":"⚡ QF",
                               "R16":"R16","R32":"R32","R64":"R64","R128":"R128",
                               "1R":"R1","2R":"R2","3R":"R3"}
-                        round_label = rm.get(rt.inner_text().strip().upper(),
-                                             rt.inner_text().strip())
+                        round_label = rm.get(round_raw.upper(), round_raw)
                 except Exception:
                     pass
 
@@ -836,10 +880,12 @@ def get_matches(context, day: str = "today", label: str = "") -> list:
                     "p1": p1_name, "p2": p2_name,
                     "slug1": slug1, "slug2": slug2,
                     "tournament": current_tournament,
+                    "tournament_full": current_tournament_full,
                     "surface": surface,
                     "time": match_time,
                     "odds_p1": odds_p1, "odds_p2": odds_p2,
                     "round": round_label,
+                    "round_raw": round_raw,
                 })
                 i += 2
             except Exception:
@@ -1173,24 +1219,41 @@ def _set_handicap(conf: int, winner: str) -> str:
     if conf >= 65: return f"{winner} -1.5 sets (marginal)"
     return "Skip set handicap"
 
-def _key_factor(d1: dict, d2: dict, p1: str, p2: str, surface: str) -> str:
-    s1 = d1.get("serve_win_pct"); s2 = d2.get("serve_win_pct")
-    if s1 and s2:
-        if s1 > s2 + 0.08: return f"{p1} serve dominates on {surface}"
-        if s2 > s1 + 0.08: return f"{p2} serve dominates on {surface}"
-    sw1 = d1.get("sw",{}).get(surface,0); sl1 = d1.get("sl",{}).get(surface,0)
-    sw2 = d2.get("sw",{}).get(surface,0); sl2 = d2.get("sl",{}).get(surface,0)
-    r1  = sw1/(sw1+sl1) if (sw1+sl1) >= 4 else None
-    r2  = sw2/(sw2+sl2) if (sw2+sl2) >= 4 else None
-    if r1 and r2:
-        if r1 > r2 + 0.15: return f"{p1} dominant on {surface} ({round(r1*100)}% win rate)"
-        if r2 > r1 + 0.15: return f"{p2} dominant on {surface} ({round(r2*100)}% win rate)"
-    r1d, r2d = d1.get("rank",500), d2.get("rank",500)
-    if abs(r1d - r2d) > 100:
-        return f"Ranking gap — {p1 if r1d < r2d else p2} is the clear favourite"
-    st1, st2 = d1.get("streak",0), d2.get("streak",0)
-    if st1 >= 4: return f"{p1} on a {st1}-win streak"
-    if st2 >= 4: return f"{p2} on a {st2}-win streak"
+def _key_factor(d1: dict, d2: dict, p1: str, p2: str, surface: str,
+                fav: str = "") -> str:
+    """
+    One-line rationale. `fav` is the picked player — every branch that names a
+    player is phrased from the pick's side, so the tag never contradicts it
+    (a strength of the opponent is surfaced as an "upset risk" instead).
+    """
+    fav = fav or p1
+    if fav == p1:
+        df, dd, dog = d1, d2, p2
+    else:
+        df, dd, dog = d2, d1, p1
+
+    sf, sd = df.get("serve_win_pct"), dd.get("serve_win_pct")
+    if sf and sd:
+        if sf > sd + 0.08: return f"{fav} serve dominates on {surface}"
+        if sd > sf + 0.08: return f"Upset risk — {dog} serve dominates on {surface}"
+
+    swf = df.get("sw",{}).get(surface,0); slf = df.get("sl",{}).get(surface,0)
+    swd = dd.get("sw",{}).get(surface,0); sld = dd.get("sl",{}).get(surface,0)
+    rf  = swf/(swf+slf) if (swf+slf) >= 4 else None
+    rd  = swd/(swd+sld) if (swd+sld) >= 4 else None
+    if rf and rd:
+        if rf > rd + 0.15: return f"{fav} dominant on {surface} ({round(rf*100)}% win rate)"
+        if rd > rf + 0.15: return f"Upset risk — {dog} dominant on {surface} ({round(rd*100)}% win rate)"
+
+    rkf, rkd = df.get("rank",500), dd.get("rank",500)
+    if rkd - rkf > 100:
+        return f"Ranking gap — {fav} clearly higher-ranked (#{rkf} vs #{rkd})"
+    if rkf - rkd > 100:
+        return f"Upset pick — {fav} (#{rkf}) ranked below {dog} (#{rkd})"
+
+    stf, std = df.get("streak",0), dd.get("streak",0)
+    if stf >= 4: return f"{fav} on a {stf}-win streak"
+    if std >= 4: return f"Upset risk — {dog} on a {std}-win streak"
     return {"clay":"Clay rewards baseline stamina","grass":"Grass favours big servers",
             "indoors":"Indoor boosts serving","hard":"Recent form decides"}.get(surface,"Form decides")
 
@@ -1202,9 +1265,12 @@ def evaluate_matches(matches: list, context) -> list:
     picks = []
     for m in matches[:30]:
         try:
-            print(f"\n── {m['p1']} vs {m['p2']}  [{m['surface']}]  {m['tournament']}")
-            if is_slam_qualifying(m["tournament"], m.get("round", "")):
-                print(f"   SKIP: Grand Slam qualifying — {m['tournament']} {m.get('round','')}".rstrip())
+            t_full = m.get("tournament_full") or m["tournament"]
+            r_raw  = m.get("round_raw") or m.get("round", "")
+            print(f"\n── {m['p1']} vs {m['p2']}  [{m['surface']}]  "
+                  f"{t_full}  (round={r_raw!r})")
+            if is_slam_qualifying(t_full, r_raw):
+                print(f"   SKIP: Grand Slam qualifying — {t_full} {r_raw}".rstrip())
                 continue
             d1 = get_player_data(context, m["slug1"], m["p1"], m["surface"])
             d2 = get_player_data(context, m["slug2"], m["p2"], m["surface"])
@@ -1246,6 +1312,20 @@ def evaluate_matches(matches: list, context) -> list:
             srv1 = get_serve_stats(m["slug1"], m["surface"], m["p1"])
             srv2 = get_serve_stats(m["slug2"], m["surface"], m["p2"])
 
+            # Tracking only (no grading/filter change): when rank and surface-ELO
+            # point at different players by a meaningful margin, record which
+            # signal the pick ultimately sided with.
+            elo1_v = get_surface_elo(m["slug1"], m["surface"])
+            elo2_v = get_surface_elo(m["slug2"], m["surface"])
+            re_conflict, re_rank_fav, re_elo_fav = rank_elo_conflict(
+                d1["rank"], d2["rank"], elo1_v, elo2_v)
+            fav_token   = "p1" if favourite == m["p1"] else "p2"
+            sided_with  = None
+            if re_conflict:
+                sided_with = "rank" if fav_token == re_rank_fav else "elo"
+                print(f"   RANK/ELO CONFLICT: rank favours {re_rank_fav}, "
+                      f"elo favours {re_elo_fav} — pick sided with {sided_with.upper()}")
+
             picks.append({
                 "m": m, "d1": d1, "d2": d2,
                 "s1": s1, "s2": s2,
@@ -1254,8 +1334,10 @@ def evaluate_matches(matches: list, context) -> list:
                 "edge": edge,
                 "streak1":    d1.get("streak", 0),
                 "streak2":    d2.get("streak", 0),
-                "elo1":       get_surface_elo(m["slug1"], m["surface"]),
-                "elo2":       get_surface_elo(m["slug2"], m["surface"]),
+                "elo1":       elo1_v,
+                "elo2":       elo2_v,
+                "rank_elo_conflict":  re_conflict,
+                "conflict_sided_with": sided_with,
                 "h2h":        f"{h2h_w}/{h2h_t}",
                 "pred_sets":  pred_sets,
                 "pred_games": pred_games,
@@ -1265,7 +1347,8 @@ def evaluate_matches(matches: list, context) -> list:
                                            srv1["first_serve_pct"], srv1["source"]),
                 "serve2":     _serve_label(srv2["serve_win_pct"], m["surface"],
                                            srv2["first_serve_pct"], srv2["source"]),
-                "key_factor": _key_factor(d1, d2, m["p1"], m["p2"], m["surface"]),
+                "key_factor": _key_factor(d1, d2, m["p1"], m["p2"], m["surface"],
+                                          fav=favourite),
             })
         except Exception as e:
             print(f"   ERROR: {e}")
@@ -1462,7 +1545,7 @@ def run():
         picks.sort(key=lambda x: -x["conf"])
 
         # J. Status dedup — notify once if no picks
-        all_qualified = list(raw)
+        all_qualified = [pk for pk in raw if pk.get("grade") in ("HIGH", "MEDIUM")]
         if not picks:
             today_str = datetime.now(WAT).strftime("%A %d %B %Y")
             sent_time = datetime.now(WAT).strftime("%H:%M WAT")
