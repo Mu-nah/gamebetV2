@@ -2643,5 +2643,22 @@
     "rank_elo_conflict": false,
     "conflict_sided_with": null,
     "result": null
+  },
+  {
+    "key": "Oliynykova O.|Brantmeier R.|2026-09-01",
+    "pair": "brantmeier r.|oliynykova o.",
+    "date": "2026-09-01",
+    "p1": "Oliynykova O.",
+    "p2": "Brantmeier R.",
+    "winner_pred": "Oliynykova O.",
+    "prob": 0.6935,
+    "conf": 73,
+    "grade": "HIGH",
+    "surface": "hard",
+    "tournament": "US Open",
+    "tier": "slam_main",
+    "rank_elo_conflict": true,
+    "conflict_sided_with": "rank",
+    "result": null
   }
 ]
