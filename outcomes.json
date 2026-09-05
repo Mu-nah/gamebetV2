@@ -2660,5 +2660,22 @@
     "rank_elo_conflict": true,
     "conflict_sided_with": "rank",
     "result": null
+  },
+  {
+    "key": "Schunk N.|Ozan C.|2026-09-05",
+    "pair": "ozan c.|schunk n.",
+    "date": "2026-09-05",
+    "p1": "Schunk N.",
+    "p2": "Ozan C.",
+    "winner_pred": "Schunk N.",
+    "prob": 0.704,
+    "conf": 74,
+    "grade": "HIGH",
+    "surface": "hard",
+    "tournament": "Antalya 5 WTA",
+    "tier": "wta_tour",
+    "rank_elo_conflict": false,
+    "conflict_sided_with": null,
+    "result": null
   }
 ]
