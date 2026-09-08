@@ -2847,5 +2847,22 @@
     "rank_elo_conflict": false,
     "conflict_sided_with": null,
     "result": null
+  },
+  {
+    "key": "Kulambayeva Z.|Yaneva E.|2026-09-09",
+    "pair": "kulambayeva z.|yaneva e.",
+    "date": "2026-09-09",
+    "p1": "Kulambayeva Z.",
+    "p2": "Yaneva E.",
+    "winner_pred": "Yaneva E.",
+    "prob": 0.7362,
+    "conf": 78,
+    "grade": "HIGH",
+    "surface": "hard",
+    "tournament": "Antalya 5 WTA",
+    "tier": "wta_tour",
+    "rank_elo_conflict": true,
+    "conflict_sided_with": "rank",
+    "result": null
   }
 ]
