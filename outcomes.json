@@ -2864,5 +2864,22 @@
     "rank_elo_conflict": true,
     "conflict_sided_with": "rank",
     "result": null
+  },
+  {
+    "key": "Ciric Bagaric L.|Havlickova L.|2026-09-10",
+    "pair": "ciric bagaric l.|havlickova l.",
+    "date": "2026-09-10",
+    "p1": "Ciric Bagaric L.",
+    "p2": "Havlickova L.",
+    "winner_pred": "Havlickova L.",
+    "prob": 0.6546,
+    "conf": 68,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "tournament": "Montreux WTA",
+    "tier": "wta_tour",
+    "rank_elo_conflict": true,
+    "conflict_sided_with": "rank",
+    "result": null
   }
 ]
