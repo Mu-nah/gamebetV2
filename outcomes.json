@@ -2898,5 +2898,22 @@
     "rank_elo_conflict": false,
     "conflict_sided_with": null,
     "result": null
+  },
+  {
+    "key": "Noha Akugue N.|Maristany Zuleta De Re|2026-09-12",
+    "pair": "maristany zuleta de re|noha akugue n.",
+    "date": "2026-09-12",
+    "p1": "Noha Akugue N.",
+    "p2": "Maristany Zuleta De Re",
+    "winner_pred": "Noha Akugue N.",
+    "prob": 0.641,
+    "conf": 66,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "tournament": "Montreux WTA",
+    "tier": "wta_tour",
+    "rank_elo_conflict": false,
+    "conflict_sided_with": null,
+    "result": null
   }
 ]
