@@ -1531,5 +1531,29 @@
   },
   "granwehr": {
     "hard": 1836.19
+  },
+  "bielinska": {
+    "hard": 1641.45
+  },
+  "garcia-af165": {
+    "hard": 1663.13
+  },
+  "koike-26094": {
+    "hard": 1861.54
+  },
+  "fullana": {
+    "hard": 1791.77
+  },
+  "vergara-rivera": {
+    "hard": 1808.73
+  },
+  "candiotto-f4160": {
+    "hard": 1794.01
+  },
+  "capurro-taborda": {
+    "hard": 1834.5
+  },
+  "labrana": {
+    "hard": 1802.79
   }
 }
