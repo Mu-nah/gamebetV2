@@ -3068,5 +3068,22 @@
     "rank_elo_conflict": false,
     "conflict_sided_with": null,
     "result": null
+  },
+  {
+    "key": "Teixido Garcia M.|Cherubini D.|2026-09-14",
+    "pair": "cherubini d.|teixido garcia m.",
+    "date": "2026-09-14",
+    "p1": "Teixido Garcia M.",
+    "p2": "Cherubini D.",
+    "winner_pred": "Teixido Garcia M.",
+    "prob": 0.6283,
+    "conf": 65,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "tournament": "Valencia WTA",
+    "tier": "wta_tour",
+    "rank_elo_conflict": false,
+    "conflict_sided_with": null,
+    "result": null
   }
 ]
