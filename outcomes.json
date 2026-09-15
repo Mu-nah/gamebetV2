@@ -3153,5 +3153,22 @@
     "rank_elo_conflict": false,
     "conflict_sided_with": null,
     "result": null
+  },
+  {
+    "key": "Selekhmeteva O.|Schunk N.|2026-09-15",
+    "pair": "schunk n.|selekhmeteva o.",
+    "date": "2026-09-15",
+    "p1": "Selekhmeteva O.",
+    "p2": "Schunk N.",
+    "winner_pred": "Selekhmeteva O.",
+    "prob": 0.7168,
+    "conf": 76,
+    "grade": "HIGH",
+    "surface": "hard",
+    "tournament": "Valencia WTA",
+    "tier": "wta_tour",
+    "rank_elo_conflict": false,
+    "conflict_sided_with": null,
+    "result": null
   }
 ]
