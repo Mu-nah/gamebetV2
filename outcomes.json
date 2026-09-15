@@ -3136,5 +3136,22 @@
     "rank_elo_conflict": false,
     "conflict_sided_with": null,
     "result": null
+  },
+  {
+    "key": "Ruggeri J.|Vedder E.|2026-09-15",
+    "pair": "ruggeri j.|vedder e.",
+    "date": "2026-09-15",
+    "p1": "Ruggeri J.",
+    "p2": "Vedder E.",
+    "winner_pred": "Vedder E.",
+    "prob": 0.631,
+    "conf": 65,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "tournament": "Valencia WTA",
+    "tier": "wta_tour",
+    "rank_elo_conflict": false,
+    "conflict_sided_with": null,
+    "result": null
   }
 ]
