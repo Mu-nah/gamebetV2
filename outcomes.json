@@ -3221,5 +3221,22 @@
     "rank_elo_conflict": false,
     "conflict_sided_with": null,
     "result": null
+  },
+  {
+    "key": "Maristany Zuleta De Re|Bassols Ribera M.|2026-09-16",
+    "pair": "bassols ribera m.|maristany zuleta de re",
+    "date": "2026-09-16",
+    "p1": "Maristany Zuleta De Re",
+    "p2": "Bassols Ribera M.",
+    "winner_pred": "Bassols Ribera M.",
+    "prob": 0.738,
+    "conf": 78,
+    "grade": "HIGH",
+    "surface": "hard",
+    "tournament": "Valencia WTA",
+    "tier": "wta_tour",
+    "rank_elo_conflict": false,
+    "conflict_sided_with": null,
+    "result": null
   }
 ]
