@@ -3272,5 +3272,22 @@
     "rank_elo_conflict": false,
     "conflict_sided_with": null,
     "result": null
+  },
+  {
+    "key": "Basiletti N.|Gorgodze E.|2026-09-18",
+    "pair": "basiletti n.|gorgodze e.",
+    "date": "2026-09-18",
+    "p1": "Basiletti N.",
+    "p2": "Gorgodze E.",
+    "winner_pred": "Gorgodze E.",
+    "prob": 0.6726,
+    "conf": 70,
+    "grade": "HIGH",
+    "surface": "hard",
+    "tournament": "Ljubljana WTA",
+    "tier": "wta_tour",
+    "rank_elo_conflict": false,
+    "conflict_sided_with": null,
+    "result": null
   }
 ]
