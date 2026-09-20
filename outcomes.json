@@ -3357,5 +3357,22 @@
     "rank_elo_conflict": false,
     "conflict_sided_with": null,
     "result": null
+  },
+  {
+    "key": "Santos M.|Bains N.|2026-09-20",
+    "pair": "bains n.|santos m.",
+    "date": "2026-09-20",
+    "p1": "Santos M.",
+    "p2": "Bains N.",
+    "winner_pred": "Bains N.",
+    "prob": 0.781,
+    "conf": 80,
+    "grade": "HIGH",
+    "surface": "hard",
+    "tournament": "Porto WTA",
+    "tier": "wta_tour",
+    "rank_elo_conflict": false,
+    "conflict_sided_with": null,
+    "result": null
   }
 ]
