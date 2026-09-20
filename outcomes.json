@@ -3340,5 +3340,22 @@
     "rank_elo_conflict": false,
     "conflict_sided_with": null,
     "result": null
+  },
+  {
+    "key": "Barthel M.|De Stefano S.|2026-09-20",
+    "pair": "barthel m.|de stefano s.",
+    "date": "2026-09-20",
+    "p1": "Barthel M.",
+    "p2": "De Stefano S.",
+    "winner_pred": "Barthel M.",
+    "prob": 0.6294,
+    "conf": 65,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "tournament": "Ljubljana WTA",
+    "tier": "wta_tour",
+    "rank_elo_conflict": false,
+    "conflict_sided_with": null,
+    "result": null
   }
 ]
