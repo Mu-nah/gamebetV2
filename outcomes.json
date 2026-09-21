@@ -3391,5 +3391,22 @@
     "rank_elo_conflict": false,
     "conflict_sided_with": null,
     "result": null
+  },
+  {
+    "key": "Steiner V.|Werner C.|2026-09-22",
+    "pair": "steiner v.|werner c.",
+    "date": "2026-09-22",
+    "p1": "Steiner V.",
+    "p2": "Werner C.",
+    "winner_pred": "Werner C.",
+    "prob": 0.6996,
+    "conf": 73,
+    "grade": "HIGH",
+    "surface": "hard",
+    "tournament": "Porto WTA",
+    "tier": "wta_tour",
+    "rank_elo_conflict": false,
+    "conflict_sided_with": null,
+    "result": null
   }
 ]
