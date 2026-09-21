@@ -3374,5 +3374,22 @@
     "rank_elo_conflict": false,
     "conflict_sided_with": null,
     "result": null
+  },
+  {
+    "key": "Rinaldo Persson K.|Tomai C.|2026-09-21",
+    "pair": "rinaldo persson k.|tomai c.",
+    "date": "2026-09-21",
+    "p1": "Rinaldo Persson K.",
+    "p2": "Tomai C.",
+    "winner_pred": "Rinaldo Persson K.",
+    "prob": 0.6514,
+    "conf": 68,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "tournament": "Porto WTA",
+    "tier": "wta_tour",
+    "rank_elo_conflict": false,
+    "conflict_sided_with": null,
+    "result": null
   }
 ]
