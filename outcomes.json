@@ -3408,5 +3408,22 @@
     "rank_elo_conflict": false,
     "conflict_sided_with": null,
     "result": null
+  },
+  {
+    "key": "Brantmeier R.|Kraus S.|2026-09-26",
+    "pair": "brantmeier r.|kraus s.",
+    "date": "2026-09-26",
+    "p1": "Brantmeier R.",
+    "p2": "Kraus S.",
+    "winner_pred": "Kraus S.",
+    "prob": 0.6401,
+    "conf": 66,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "tournament": "Porto WTA",
+    "tier": "wta_tour",
+    "rank_elo_conflict": true,
+    "conflict_sided_with": "rank",
+    "result": null
   }
 ]
