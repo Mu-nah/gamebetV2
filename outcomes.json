@@ -3425,5 +3425,22 @@
     "rank_elo_conflict": true,
     "conflict_sided_with": "rank",
     "result": null
+  },
+  {
+    "key": "Timofeeva M.|Brantmeier R.|2026-09-27",
+    "pair": "brantmeier r.|timofeeva m.",
+    "date": "2026-09-27",
+    "p1": "Timofeeva M.",
+    "p2": "Brantmeier R.",
+    "winner_pred": "Timofeeva M.",
+    "prob": 0.6442,
+    "conf": 67,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "tournament": "Porto WTA",
+    "tier": "wta_tour",
+    "rank_elo_conflict": true,
+    "conflict_sided_with": "rank",
+    "result": null
   }
 ]
