@@ -3527,5 +3527,22 @@
     "rank_elo_conflict": true,
     "conflict_sided_with": "rank",
     "result": null
+  },
+  {
+    "key": "Lys E.|Sun X.|2026-10-01",
+    "pair": "lys e.|sun x.",
+    "date": "2026-10-01",
+    "p1": "Lys E.",
+    "p2": "Sun X.",
+    "winner_pred": "Lys E.",
+    "prob": 0.7092,
+    "conf": 75,
+    "grade": "HIGH",
+    "surface": "hard",
+    "tournament": "Beijing",
+    "tier": "wta_tour",
+    "rank_elo_conflict": false,
+    "conflict_sided_with": null,
+    "result": null
   }
 ]
