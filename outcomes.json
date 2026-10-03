@@ -3544,5 +3544,22 @@
     "rank_elo_conflict": false,
     "conflict_sided_with": null,
     "result": null
+  },
+  {
+    "key": "Sun X.|Bucsa C.|2026-10-03",
+    "pair": "bucsa c.|sun x.",
+    "date": "2026-10-03",
+    "p1": "Sun X.",
+    "p2": "Bucsa C.",
+    "winner_pred": "Bucsa C.",
+    "prob": 0.7282,
+    "conf": 77,
+    "grade": "HIGH",
+    "surface": "hard",
+    "tournament": "Beijing",
+    "tier": "wta_tour",
+    "rank_elo_conflict": false,
+    "conflict_sided_with": null,
+    "result": null
   }
 ]
