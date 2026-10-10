@@ -3561,5 +3561,22 @@
     "rank_elo_conflict": false,
     "conflict_sided_with": null,
     "result": null
+  },
+  {
+    "key": "Ito A.|Parks A.|2026-10-10",
+    "pair": "ito a.|parks a.",
+    "date": "2026-10-10",
+    "p1": "Ito A.",
+    "p2": "Parks A.",
+    "winner_pred": "Parks A.",
+    "prob": 0.6408,
+    "conf": 66,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "tournament": "Wuhan",
+    "tier": "wta_tour",
+    "rank_elo_conflict": true,
+    "conflict_sided_with": "rank",
+    "result": null
   }
 ]
