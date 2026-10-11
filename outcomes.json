@@ -3578,5 +3578,22 @@
     "rank_elo_conflict": true,
     "conflict_sided_with": "rank",
     "result": null
+  },
+  {
+    "key": "Shinikova I.|Kucmova A.|2026-10-11",
+    "pair": "kucmova a.|shinikova i.",
+    "date": "2026-10-11",
+    "p1": "Shinikova I.",
+    "p2": "Kucmova A.",
+    "winner_pred": "Shinikova I.",
+    "prob": 0.6487,
+    "conf": 67,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "tournament": "Mallorca WTA",
+    "tier": "wta_tour",
+    "rank_elo_conflict": true,
+    "conflict_sided_with": "rank",
+    "result": null
   }
 ]
