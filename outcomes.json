@@ -3697,5 +3697,39 @@
     "rank_elo_conflict": false,
     "conflict_sided_with": null,
     "result": null
+  },
+  {
+    "key": "Lazaro Garcia A.|Brancaccio N.|2026-10-15",
+    "pair": "brancaccio n.|lazaro garcia a.",
+    "date": "2026-10-15",
+    "p1": "Lazaro Garcia A.",
+    "p2": "Brancaccio N.",
+    "winner_pred": "Lazaro Garcia A.",
+    "prob": 0.6703,
+    "conf": 70,
+    "grade": "HIGH",
+    "surface": "hard",
+    "tournament": "Mallorca WTA",
+    "tier": "wta_tour",
+    "rank_elo_conflict": false,
+    "conflict_sided_with": null,
+    "result": null
+  },
+  {
+    "key": "Zidansek T.|Steur J.|2026-10-15",
+    "pair": "steur j.|zidansek t.",
+    "date": "2026-10-15",
+    "p1": "Zidansek T.",
+    "p2": "Steur J.",
+    "winner_pred": "Zidansek T.",
+    "prob": 0.6442,
+    "conf": 67,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "tournament": "Mallorca WTA",
+    "tier": "wta_tour",
+    "rank_elo_conflict": true,
+    "conflict_sided_with": "rank",
+    "result": null
   }
 ]
