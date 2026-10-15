@@ -3731,5 +3731,39 @@
     "rank_elo_conflict": true,
     "conflict_sided_with": "rank",
     "result": null
+  },
+  {
+    "key": "Grabher J.|Geerlings A.|2026-10-16",
+    "pair": "geerlings a.|grabher j.",
+    "date": "2026-10-16",
+    "p1": "Grabher J.",
+    "p2": "Geerlings A.",
+    "winner_pred": "Grabher J.",
+    "prob": 0.7731,
+    "conf": 80,
+    "grade": "HIGH",
+    "surface": "hard",
+    "tournament": "Mallorca WTA",
+    "tier": "wta_tour",
+    "rank_elo_conflict": true,
+    "conflict_sided_with": "rank",
+    "result": null
+  },
+  {
+    "key": "Curmi F.|Yaneva E.|2026-10-16",
+    "pair": "curmi f.|yaneva e.",
+    "date": "2026-10-16",
+    "p1": "Curmi F.",
+    "p2": "Yaneva E.",
+    "winner_pred": "Yaneva E.",
+    "prob": 0.6284,
+    "conf": 65,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "tournament": "Mallorca WTA",
+    "tier": "wta_tour",
+    "rank_elo_conflict": true,
+    "conflict_sided_with": "rank",
+    "result": null
   }
 ]
