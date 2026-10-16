@@ -3782,5 +3782,22 @@
     "rank_elo_conflict": false,
     "conflict_sided_with": null,
     "result": null
+  },
+  {
+    "key": "Geerlings A.|Curmi F.|2026-10-17",
+    "pair": "curmi f.|geerlings a.",
+    "date": "2026-10-17",
+    "p1": "Geerlings A.",
+    "p2": "Curmi F.",
+    "winner_pred": "Curmi F.",
+    "prob": 0.6436,
+    "conf": 67,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "tournament": "Mallorca WTA",
+    "tier": "wta_tour",
+    "rank_elo_conflict": false,
+    "conflict_sided_with": null,
+    "result": null
   }
 ]
