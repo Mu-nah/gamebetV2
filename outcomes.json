@@ -3765,5 +3765,22 @@
     "rank_elo_conflict": true,
     "conflict_sided_with": "rank",
     "result": null
+  },
+  {
+    "key": "Zidansek T.|Masarova R.|2026-10-16",
+    "pair": "masarova r.|zidansek t.",
+    "date": "2026-10-16",
+    "p1": "Zidansek T.",
+    "p2": "Masarova R.",
+    "winner_pred": "Zidansek T.",
+    "prob": 0.63,
+    "conf": 65,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "tournament": "Mallorca WTA",
+    "tier": "wta_tour",
+    "rank_elo_conflict": false,
+    "conflict_sided_with": null,
+    "result": null
   }
 ]
