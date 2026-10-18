@@ -3799,5 +3799,22 @@
     "rank_elo_conflict": false,
     "conflict_sided_with": null,
     "result": null
+  },
+  {
+    "key": "Geerlings A.|Samson L.|2026-10-18",
+    "pair": "geerlings a.|samson l.",
+    "date": "2026-10-18",
+    "p1": "Geerlings A.",
+    "p2": "Samson L.",
+    "winner_pred": "Samson L.",
+    "prob": 0.6718,
+    "conf": 70,
+    "grade": "HIGH",
+    "surface": "hard",
+    "tournament": "Mallorca WTA",
+    "tier": "wta_tour",
+    "rank_elo_conflict": true,
+    "conflict_sided_with": "rank",
+    "result": null
   }
 ]
