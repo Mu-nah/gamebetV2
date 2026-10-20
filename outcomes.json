@@ -3816,5 +3816,22 @@
     "rank_elo_conflict": true,
     "conflict_sided_with": "rank",
     "result": null
+  },
+  {
+    "key": "Uchijima M.|Shibahara E.|2026-10-20",
+    "pair": "shibahara e.|uchijima m.",
+    "date": "2026-10-20",
+    "p1": "Uchijima M.",
+    "p2": "Shibahara E.",
+    "winner_pred": "Uchijima M.",
+    "prob": 0.7007,
+    "conf": 74,
+    "grade": "HIGH",
+    "surface": "hard",
+    "tournament": "Osaka WTA",
+    "tier": "wta_tour",
+    "rank_elo_conflict": false,
+    "conflict_sided_with": null,
+    "result": null
   }
 ]
