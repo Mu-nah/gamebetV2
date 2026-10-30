@@ -3918,5 +3918,22 @@
     "rank_elo_conflict": false,
     "conflict_sided_with": null,
     "result": null
+  },
+  {
+    "key": "Sun X.|Liu C.|2026-10-30",
+    "pair": "liu c.|sun x.",
+    "date": "2026-10-30",
+    "p1": "Sun X.",
+    "p2": "Liu C.",
+    "winner_pred": "Liu C.",
+    "prob": 0.6755,
+    "conf": 71,
+    "grade": "HIGH",
+    "surface": "hard",
+    "tournament": "Guangzhou",
+    "tier": "wta_tour",
+    "rank_elo_conflict": false,
+    "conflict_sided_with": null,
+    "result": null
   }
 ]
