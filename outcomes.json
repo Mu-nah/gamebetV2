@@ -3986,5 +3986,22 @@
     "rank_elo_conflict": true,
     "conflict_sided_with": "rank",
     "result": null
+  },
+  {
+    "key": "Yamaguchi M.|Kulambayeva Z.|2026-11-01",
+    "pair": "kulambayeva z.|yamaguchi m.",
+    "date": "2026-11-01",
+    "p1": "Yamaguchi M.",
+    "p2": "Kulambayeva Z.",
+    "winner_pred": "Yamaguchi M.",
+    "prob": 0.7079,
+    "conf": 74,
+    "grade": "HIGH",
+    "surface": "hard",
+    "tournament": "Chennai WTA",
+    "tier": "wta_tour",
+    "rank_elo_conflict": false,
+    "conflict_sided_with": null,
+    "result": null
   }
 ]
