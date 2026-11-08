@@ -4037,5 +4037,22 @@
     "rank_elo_conflict": false,
     "conflict_sided_with": null,
     "result": null
+  },
+  {
+    "key": "Jakupovic D.|Collazos I.|2026-11-08",
+    "pair": "collazos i.|jakupovic d.",
+    "date": "2026-11-08",
+    "p1": "Jakupovic D.",
+    "p2": "Collazos I.",
+    "winner_pred": "Jakupovic D.",
+    "prob": 0.6375,
+    "conf": 66,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "tournament": "Sopo WTA",
+    "tier": "wta_tour",
+    "rank_elo_conflict": false,
+    "conflict_sided_with": null,
+    "result": null
   }
 ]
