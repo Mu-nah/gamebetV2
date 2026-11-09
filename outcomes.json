@@ -4054,5 +4054,22 @@
     "rank_elo_conflict": false,
     "conflict_sided_with": null,
     "result": null
+  },
+  {
+    "key": "Costoulas S.|Esquivel Useche A.|2026-11-09",
+    "pair": "costoulas s.|esquivel useche a.",
+    "date": "2026-11-09",
+    "p1": "Costoulas S.",
+    "p2": "Esquivel Useche A.",
+    "winner_pred": "Costoulas S.",
+    "prob": 0.8459,
+    "conf": 80,
+    "grade": "HIGH",
+    "surface": "hard",
+    "tournament": "Sopo WTA",
+    "tier": "wta_tour",
+    "rank_elo_conflict": false,
+    "conflict_sided_with": null,
+    "result": null
   }
 ]
