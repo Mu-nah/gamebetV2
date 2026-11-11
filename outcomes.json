@@ -4071,5 +4071,22 @@
     "rank_elo_conflict": false,
     "conflict_sided_with": null,
     "result": null
+  },
+  {
+    "key": "Maria T.|Tubello A.|2026-11-11",
+    "pair": "maria t.|tubello a.",
+    "date": "2026-11-11",
+    "p1": "Maria T.",
+    "p2": "Tubello A.",
+    "winner_pred": "Maria T.",
+    "prob": 0.6688,
+    "conf": 70,
+    "grade": "HIGH",
+    "surface": "hard",
+    "tournament": "Sopo WTA",
+    "tier": "wta_tour",
+    "rank_elo_conflict": false,
+    "conflict_sided_with": null,
+    "result": null
   }
 ]
