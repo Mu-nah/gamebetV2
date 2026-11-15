@@ -4088,5 +4088,39 @@
     "rank_elo_conflict": false,
     "conflict_sided_with": null,
     "result": null
+  },
+  {
+    "key": "Geerlings A.|Rodero Contreras C.|2026-11-15",
+    "pair": "geerlings a.|rodero contreras c.",
+    "date": "2026-11-15",
+    "p1": "Geerlings A.",
+    "p2": "Rodero Contreras C.",
+    "winner_pred": "Geerlings A.",
+    "prob": 0.7297,
+    "conf": 77,
+    "grade": "HIGH",
+    "surface": "hard",
+    "tournament": "Colina WTA",
+    "tier": "wta_tour",
+    "rank_elo_conflict": false,
+    "conflict_sided_with": null,
+    "result": null
+  },
+  {
+    "key": "Trevisan M.|Alvarez S.|2026-11-15",
+    "pair": "alvarez s.|trevisan m.",
+    "date": "2026-11-15",
+    "p1": "Trevisan M.",
+    "p2": "Alvarez S.",
+    "winner_pred": "Trevisan M.",
+    "prob": 0.6701,
+    "conf": 70,
+    "grade": "HIGH",
+    "surface": "hard",
+    "tournament": "Colina WTA",
+    "tier": "wta_tour",
+    "rank_elo_conflict": false,
+    "conflict_sided_with": null,
+    "result": null
   }
 ]
