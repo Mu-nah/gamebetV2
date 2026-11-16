@@ -4139,5 +4139,39 @@
     "rank_elo_conflict": false,
     "conflict_sided_with": null,
     "result": null
+  },
+  {
+    "key": "Gatica B.|Lazaro Garcia A.|2026-11-17",
+    "pair": "gatica b.|lazaro garcia a.",
+    "date": "2026-11-17",
+    "p1": "Gatica B.",
+    "p2": "Lazaro Garcia A.",
+    "winner_pred": "Lazaro Garcia A.",
+    "prob": 0.7712,
+    "conf": 80,
+    "grade": "HIGH",
+    "surface": "hard",
+    "tournament": "Colina WTA",
+    "tier": "wta_tour",
+    "rank_elo_conflict": false,
+    "conflict_sided_with": null,
+    "result": null
+  },
+  {
+    "key": "Bronzetti L.|Herrero Linana A.|2026-11-17",
+    "pair": "bronzetti l.|herrero linana a.",
+    "date": "2026-11-17",
+    "p1": "Bronzetti L.",
+    "p2": "Herrero Linana A.",
+    "winner_pred": "Bronzetti L.",
+    "prob": 0.64,
+    "conf": 66,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "tournament": "Colina WTA",
+    "tier": "wta_tour",
+    "rank_elo_conflict": true,
+    "conflict_sided_with": "rank",
+    "result": null
   }
 ]
