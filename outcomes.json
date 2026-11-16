@@ -4122,5 +4122,22 @@
     "rank_elo_conflict": false,
     "conflict_sided_with": null,
     "result": null
+  },
+  {
+    "key": "Costoulas S.|Brancaccio N.|2026-11-16",
+    "pair": "brancaccio n.|costoulas s.",
+    "date": "2026-11-16",
+    "p1": "Costoulas S.",
+    "p2": "Brancaccio N.",
+    "winner_pred": "Costoulas S.",
+    "prob": 0.6613,
+    "conf": 69,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "tournament": "Colina WTA",
+    "tier": "wta_tour",
+    "rank_elo_conflict": false,
+    "conflict_sided_with": null,
+    "result": null
   }
 ]
