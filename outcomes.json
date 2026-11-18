@@ -4173,5 +4173,22 @@
     "rank_elo_conflict": true,
     "conflict_sided_with": "rank",
     "result": null
+  },
+  {
+    "key": "Maristany Zuleta De Reales G.|Costoulas S.|2026-11-18",
+    "pair": "costoulas s.|maristany zuleta de reales g.",
+    "date": "2026-11-18",
+    "p1": "Maristany Zuleta De Reales G.",
+    "p2": "Costoulas S.",
+    "winner_pred": "Costoulas S.",
+    "prob": 0.7152,
+    "conf": 75,
+    "grade": "HIGH",
+    "surface": "hard",
+    "tournament": "Colina WTA",
+    "tier": "wta_tour",
+    "rank_elo_conflict": false,
+    "conflict_sided_with": null,
+    "result": null
   }
 ]
