@@ -4207,5 +4207,22 @@
     "rank_elo_conflict": true,
     "conflict_sided_with": "rank",
     "result": null
+  },
+  {
+    "key": "Maristany Zuleta De Re|Lazaro Garcia A.|2026-11-20",
+    "pair": "lazaro garcia a.|maristany zuleta de re",
+    "date": "2026-11-20",
+    "p1": "Maristany Zuleta De Re",
+    "p2": "Lazaro Garcia A.",
+    "winner_pred": "Lazaro Garcia A.",
+    "prob": 0.7056,
+    "conf": 74,
+    "grade": "HIGH",
+    "surface": "hard",
+    "tournament": "Colina WTA",
+    "tier": "wta_tour",
+    "rank_elo_conflict": false,
+    "conflict_sided_with": null,
+    "result": null
   }
 ]
