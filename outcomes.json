@@ -4241,5 +4241,22 @@
     "rank_elo_conflict": false,
     "conflict_sided_with": null,
     "result": null
+  },
+  {
+    "key": "Herrero Linana A.|Riera J.|2026-11-27",
+    "pair": "herrero linana a.|riera j.",
+    "date": "2026-11-27",
+    "p1": "Herrero Linana A.",
+    "p2": "Riera J.",
+    "winner_pred": "Riera J.",
+    "prob": 0.633,
+    "conf": 65,
+    "grade": "MEDIUM",
+    "surface": "hard",
+    "tournament": "Buenos Aires WTA",
+    "tier": "wta_tour",
+    "rank_elo_conflict": true,
+    "conflict_sided_with": "rank",
+    "result": null
   }
 ]
