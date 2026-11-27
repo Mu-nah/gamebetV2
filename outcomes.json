@@ -4258,5 +4258,22 @@
     "rank_elo_conflict": true,
     "conflict_sided_with": "rank",
     "result": null
+  },
+  {
+    "key": "Maristany Zuleta De Reales G.|Carle M.|2026-11-27",
+    "pair": "carle m.|maristany zuleta de reales g.",
+    "date": "2026-11-27",
+    "p1": "Maristany Zuleta De Reales G.",
+    "p2": "Carle M.",
+    "winner_pred": "Carle M.",
+    "prob": 0.6956,
+    "conf": 73,
+    "grade": "HIGH",
+    "surface": "hard",
+    "tournament": "Buenos Aires WTA",
+    "tier": "wta_tour",
+    "rank_elo_conflict": false,
+    "conflict_sided_with": null,
+    "result": null
   }
 ]
